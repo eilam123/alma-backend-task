@@ -1,0 +1,1624 @@
+{
+  "spans": [
+    {
+      "id": "span-001",
+      "kind": "server",
+      "name": "POST /signup",
+      "start_at": "2024-12-21T10:00:00.000Z",
+      "end_at": "2024-12-21T10:00:00.150Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signup",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"johndoe\", \"email\": \"john.doe@email.com\", \"password\": \"secret123\", \"phone\": \"+1-555-123-4567\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-002",
+      "kind": "client",
+      "name": "POST /users",
+      "start_at": "2024-12-21T10:00:00.010Z",
+      "end_at": "2024-12-21T10:00:00.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"johndoe\", \"email\": \"john.doe@email.com\", \"phone\": \"+1-555-123-4567\"}",
+        "ebpf.http.resp_body": "{\"id\": \"user-789\", \"username\": \"johndoe\", \"email\": \"john.doe@email.com\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-003",
+      "kind": "client",
+      "name": "INSERT users",
+      "start_at": "2024-12-21T10:00:00.020Z",
+      "end_at": "2024-12-21T10:00:00.070Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "INSERT INTO users (username, email, phone) VALUES ($1, $2, $3) RETURNING id",
+        "ebpf.db.query.values": "[\"johndoe\", \"john.doe@email.com\", \"+1-555-123-4567\"]"
+      }
+    },
+    {
+      "id": "span-004",
+      "kind": "server",
+      "name": "POST /signin",
+      "start_at": "2024-12-21T10:00:01.000Z",
+      "end_at": "2024-12-21T10:00:01.100Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signin",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"johndoe\", \"password\": \"secret123\"}",
+        "ebpf.http.resp_body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\", \"user_id\": \"user-789\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-005",
+      "kind": "client",
+      "name": "GET /users/user-789",
+      "start_at": "2024-12-21T10:00:01.010Z",
+      "end_at": "2024-12-21T10:00:01.060Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-789",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-789\", \"username\": \"johndoe\", \"email\": \"john.doe@email.com\", \"phone\": \"+1-555-123-4567\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-006",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:00:01.020Z",
+      "end_at": "2024-12-21T10:00:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE username = $1",
+        "ebpf.db.query.values": "[\"johndoe\"]"
+      }
+    },
+    {
+      "id": "span-007",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:00:02.000Z",
+      "end_at": "2024-12-21T10:00:02.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"product_id\": \"prod-001\", \"quantity\": 2}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-456\", \"items\": [{\"product_id\": \"prod-001\", \"quantity\": 2}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-008",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:00:03.000Z",
+      "end_at": "2024-12-21T10:00:03.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-456\", \"user_id\": \"user-789\", \"items\": [{\"product_id\": \"prod-001\", \"name\": \"Organic Milk\", \"quantity\": 2, \"price\": 5.99}], \"total\": 11.98}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-009",
+      "kind": "server",
+      "name": "DELETE /cart/remove",
+      "start_at": "2024-12-21T10:00:04.000Z",
+      "end_at": "2024-12-21T10:00:04.040Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/remove",
+        "ebpf.http.method": "DELETE",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"product_id\": \"prod-002\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-010",
+      "kind": "server",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:00:05.000Z",
+      "end_at": "2024-12-21T10:00:05.500Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"cart_id\": \"cart-456\", \"credit_card\": {\"number\": \"4532015112830366\", \"expiry\": \"12/25\", \"cvv\": \"123\"}}",
+        "ebpf.http.resp_body": "{\"order_id\": \"order-101\", \"status\": \"confirmed\", \"total\": 11.98}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-011",
+      "kind": "client",
+      "name": "POST /pay",
+      "start_at": "2024-12-21T10:00:05.050Z",
+      "end_at": "2024-12-21T10:00:05.200Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/pay",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"amount\": 11.98, \"currency\": \"USD\", \"credit_card\": {\"number\": \"4532015112830366\", \"expiry\": \"12/25\", \"cvv\": \"123\"}}",
+        "ebpf.http.resp_body": "{\"transaction_id\": \"txn-555\", \"status\": \"success\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-012",
+      "kind": "client",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:00:05.210Z",
+      "end_at": "2024-12-21T10:00:05.280Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"order_id\": \"order-101\", \"transaction_id\": \"txn-555\", \"user_id\": \"user-789\"}",
+        "ebpf.http.resp_body": "{\"receipt_id\": \"rcpt-999\", \"status\": \"completed\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-013",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:00:05.300Z",
+      "end_at": "2024-12-21T10:00:05.320Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"checkout_completed\", \"user_id\": \"user-789\", \"order_id\": \"order-101\", \"timestamp\": \"2024-12-21T10:00:05Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-014",
+      "kind": "client",
+      "name": "POST /metric",
+      "start_at": "2024-12-21T10:00:05.330Z",
+      "end_at": "2024-12-21T10:00:05.345Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/metric",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"metric\": \"order_total\", \"value\": 11.98, \"tags\": {\"user_id\": \"user-789\"}}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-015",
+      "kind": "producer",
+      "name": "orders-topic publish",
+      "start_at": "2024-12-21T10:00:05.350Z",
+      "end_at": "2024-12-21T10:00:05.365Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"order_id\": \"order-101\", \"user_id\": \"user-789\", \"items\": [{\"product_id\": \"prod-001\", \"quantity\": 2}], \"total\": 11.98}"
+      }
+    },
+    {
+      "id": "span-016",
+      "kind": "producer",
+      "name": "payments-topic publish",
+      "start_at": "2024-12-21T10:00:05.370Z",
+      "end_at": "2024-12-21T10:00:05.385Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"transaction_id\": \"txn-555\", \"order_id\": \"order-101\", \"amount\": 11.98, \"status\": \"success\"}"
+      }
+    },
+    {
+      "id": "span-017",
+      "kind": "producer",
+      "name": "inventory-topic publish",
+      "start_at": "2024-12-21T10:00:05.390Z",
+      "end_at": "2024-12-21T10:00:05.405Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "inventory-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"order_id\": \"order-101\", \"items\": [{\"product_id\": \"prod-001\", \"quantity\": 2}]}"
+      }
+    },
+    {
+      "id": "span-018",
+      "kind": "producer",
+      "name": "notifications-topic publish",
+      "start_at": "2024-12-21T10:00:05.410Z",
+      "end_at": "2024-12-21T10:00:05.425Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "notifications-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"user_id\": \"user-789\", \"email\": \"john.doe@email.com\", \"type\": \"order_confirmation\", \"order_id\": \"order-101\"}"
+      }
+    },
+    {
+      "id": "span-019",
+      "kind": "consumer",
+      "name": "orders-topic consume",
+      "start_at": "2024-12-21T10:00:05.500Z",
+      "end_at": "2024-12-21T10:00:05.650Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-020",
+      "kind": "client",
+      "name": "INSERT orders",
+      "start_at": "2024-12-21T10:00:05.520Z",
+      "end_at": "2024-12-21T10:00:05.580Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.insertOne({order_id: 'order-101', user_id: 'user-789', total: 11.98, status: 'processing'})"
+      }
+    },
+    {
+      "id": "span-021",
+      "kind": "consumer",
+      "name": "payments-topic consume",
+      "start_at": "2024-12-21T10:00:05.510Z",
+      "end_at": "2024-12-21T10:00:05.700Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-022",
+      "kind": "client",
+      "name": "INSERT transactions",
+      "start_at": "2024-12-21T10:00:05.530Z",
+      "end_at": "2024-12-21T10:00:05.600Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "payments-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.transactions.insertOne({transaction_id: 'txn-555', order_id: 'order-101', amount: 11.98, status: 'success'})"
+      }
+    },
+    {
+      "id": "span-023",
+      "kind": "consumer",
+      "name": "inventory-topic consume",
+      "start_at": "2024-12-21T10:00:05.520Z",
+      "end_at": "2024-12-21T10:00:05.620Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "inventory-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "inventory-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-024",
+      "kind": "consumer",
+      "name": "notifications-topic consume",
+      "start_at": "2024-12-21T10:00:05.530Z",
+      "end_at": "2024-12-21T10:00:05.680Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "notification-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "notifications-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-025",
+      "kind": "client",
+      "name": "POST /cancel",
+      "start_at": "2024-12-21T10:00:10.000Z",
+      "end_at": "2024-12-21T10:00:10.150Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/cancel",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"transaction_id\": \"txn-444\", \"reason\": \"customer_request\"}",
+        "ebpf.http.resp_body": "{\"refund_id\": \"ref-111\", \"status\": \"refunded\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-026",
+      "kind": "client",
+      "name": "GET /users/user-456",
+      "start_at": "2024-12-21T10:00:15.000Z",
+      "end_at": "2024-12-21T10:00:15.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-456",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-456\", \"username\": \"janedoe\", \"email\": \"jane.doe@email.com\", \"phone\": \"+1-555-987-6543\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-027",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:00:15.010Z",
+      "end_at": "2024-12-21T10:00:15.060Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE id = $1",
+        "ebpf.db.query.values": "[\"user-456\"]"
+      }
+    },
+    {
+      "id": "span-028",
+      "kind": "server",
+      "name": "POST /signup",
+      "start_at": "2024-12-21T10:01:00.000Z",
+      "end_at": "2024-12-21T10:01:00.150Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signup",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"mikebrown\", \"email\": \"mike.brown@email.com\", \"password\": \"pass456\", \"phone\": \"+1-555-222-3333\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-029",
+      "kind": "client",
+      "name": "POST /users",
+      "start_at": "2024-12-21T10:01:00.010Z",
+      "end_at": "2024-12-21T10:01:00.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"mikebrown\", \"email\": \"mike.brown@email.com\", \"phone\": \"+1-555-222-3333\"}",
+        "ebpf.http.resp_body": "{\"id\": \"user-111\", \"username\": \"mikebrown\", \"email\": \"mike.brown@email.com\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-030",
+      "kind": "client",
+      "name": "INSERT users",
+      "start_at": "2024-12-21T10:01:00.020Z",
+      "end_at": "2024-12-21T10:01:00.070Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "INSERT INTO users (username, email, phone) VALUES ($1, $2, $3) RETURNING id",
+        "ebpf.db.query.values": "[\"mikebrown\", \"mike.brown@email.com\", \"+1-555-222-3333\"]"
+      }
+    },
+    {
+      "id": "span-031",
+      "kind": "server",
+      "name": "POST /signin",
+      "start_at": "2024-12-21T10:01:01.000Z",
+      "end_at": "2024-12-21T10:01:01.100Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signin",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"mikebrown\", \"password\": \"pass456\"}",
+        "ebpf.http.resp_body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\", \"user_id\": \"user-111\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-032",
+      "kind": "client",
+      "name": "GET /users/user-111",
+      "start_at": "2024-12-21T10:01:01.010Z",
+      "end_at": "2024-12-21T10:01:01.060Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-111",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-111\", \"username\": \"mikebrown\", \"email\": \"mike.brown@email.com\", \"phone\": \"+1-555-222-3333\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-033",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:01:01.020Z",
+      "end_at": "2024-12-21T10:01:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE username = $1",
+        "ebpf.db.query.values": "[\"mikebrown\"]"
+      }
+    },
+    {
+      "id": "span-034",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:01:02.000Z",
+      "end_at": "2024-12-21T10:01:02.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-111\", \"product_id\": \"prod-005\", \"quantity\": 1}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-222\", \"items\": [{\"product_id\": \"prod-005\", \"quantity\": 1}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-035",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:01:02.500Z",
+      "end_at": "2024-12-21T10:01:02.550Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-111\", \"product_id\": \"prod-003\", \"quantity\": 3}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-222\", \"items\": [{\"product_id\": \"prod-005\", \"quantity\": 1}, {\"product_id\": \"prod-003\", \"quantity\": 3}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-036",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:01:03.000Z",
+      "end_at": "2024-12-21T10:01:03.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-222\", \"user_id\": \"user-111\", \"items\": [{\"product_id\": \"prod-005\", \"name\": \"Bread\", \"quantity\": 1, \"price\": 3.49}, {\"product_id\": \"prod-003\", \"name\": \"Eggs\", \"quantity\": 3, \"price\": 4.99}], \"total\": 18.46}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-037",
+      "kind": "server",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:01:05.000Z",
+      "end_at": "2024-12-21T10:01:05.500Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-111\", \"cart_id\": \"cart-222\", \"credit_card\": {\"number\": \"5425233430109903\", \"expiry\": \"08/26\", \"cvv\": \"456\"}}",
+        "ebpf.http.resp_body": "{\"order_id\": \"order-202\", \"status\": \"confirmed\", \"total\": 18.46}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-038",
+      "kind": "client",
+      "name": "POST /pay",
+      "start_at": "2024-12-21T10:01:05.050Z",
+      "end_at": "2024-12-21T10:01:05.200Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/pay",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"amount\": 18.46, \"currency\": \"USD\", \"credit_card\": {\"number\": \"5425233430109903\", \"expiry\": \"08/26\", \"cvv\": \"456\"}}",
+        "ebpf.http.resp_body": "{\"transaction_id\": \"txn-666\", \"status\": \"success\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-039",
+      "kind": "client",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:01:05.210Z",
+      "end_at": "2024-12-21T10:01:05.280Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"order_id\": \"order-202\", \"transaction_id\": \"txn-666\", \"user_id\": \"user-111\"}",
+        "ebpf.http.resp_body": "{\"receipt_id\": \"rcpt-888\", \"status\": \"completed\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-040",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:01:05.300Z",
+      "end_at": "2024-12-21T10:01:05.320Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"checkout_completed\", \"user_id\": \"user-111\", \"order_id\": \"order-202\", \"timestamp\": \"2024-12-21T10:01:05Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-041",
+      "kind": "client",
+      "name": "POST /metric",
+      "start_at": "2024-12-21T10:01:05.330Z",
+      "end_at": "2024-12-21T10:01:05.345Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/metric",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"metric\": \"order_total\", \"value\": 18.46, \"tags\": {\"user_id\": \"user-111\"}}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-042",
+      "kind": "producer",
+      "name": "orders-topic publish",
+      "start_at": "2024-12-21T10:01:05.350Z",
+      "end_at": "2024-12-21T10:01:05.365Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"order_id\": \"order-202\", \"user_id\": \"user-111\", \"items\": [{\"product_id\": \"prod-005\", \"quantity\": 1}, {\"product_id\": \"prod-003\", \"quantity\": 3}], \"total\": 18.46}"
+      }
+    },
+    {
+      "id": "span-043",
+      "kind": "producer",
+      "name": "payments-topic publish",
+      "start_at": "2024-12-21T10:01:05.370Z",
+      "end_at": "2024-12-21T10:01:05.385Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"transaction_id\": \"txn-666\", \"order_id\": \"order-202\", \"amount\": 18.46, \"status\": \"success\"}"
+      }
+    },
+    {
+      "id": "span-044",
+      "kind": "consumer",
+      "name": "orders-topic consume",
+      "start_at": "2024-12-21T10:01:05.500Z",
+      "end_at": "2024-12-21T10:01:05.650Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-045",
+      "kind": "client",
+      "name": "INSERT orders",
+      "start_at": "2024-12-21T10:01:05.520Z",
+      "end_at": "2024-12-21T10:01:05.580Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.insertOne({order_id: 'order-202', user_id: 'user-111', total: 18.46, status: 'processing'})"
+      }
+    },
+    {
+      "id": "span-046",
+      "kind": "consumer",
+      "name": "payments-topic consume",
+      "start_at": "2024-12-21T10:01:05.510Z",
+      "end_at": "2024-12-21T10:01:05.700Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-047",
+      "kind": "client",
+      "name": "INSERT transactions",
+      "start_at": "2024-12-21T10:01:05.530Z",
+      "end_at": "2024-12-21T10:01:05.600Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "payments-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.transactions.insertOne({transaction_id: 'txn-666', order_id: 'order-202', amount: 18.46, status: 'success'})"
+      }
+    },
+    {
+      "id": "span-048",
+      "kind": "server",
+      "name": "POST /signin",
+      "start_at": "2024-12-21T10:02:00.000Z",
+      "end_at": "2024-12-21T10:02:00.100Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signin",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"johndoe\", \"password\": \"secret123\"}",
+        "ebpf.http.resp_body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\", \"user_id\": \"user-789\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-049",
+      "kind": "client",
+      "name": "GET /users/user-789",
+      "start_at": "2024-12-21T10:02:00.010Z",
+      "end_at": "2024-12-21T10:02:00.060Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-789",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-789\", \"username\": \"johndoe\", \"email\": \"john.doe@email.com\", \"phone\": \"+1-555-123-4567\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-050",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:02:00.020Z",
+      "end_at": "2024-12-21T10:02:00.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE username = $1",
+        "ebpf.db.query.values": "[\"johndoe\"]"
+      }
+    },
+    {
+      "id": "span-051",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:02:01.000Z",
+      "end_at": "2024-12-21T10:02:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"product_id\": \"prod-010\", \"quantity\": 2}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-789\", \"items\": [{\"product_id\": \"prod-010\", \"quantity\": 2}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-052",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:02:02.000Z",
+      "end_at": "2024-12-21T10:02:02.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-789\", \"user_id\": \"user-789\", \"items\": [{\"product_id\": \"prod-010\", \"name\": \"Orange Juice\", \"quantity\": 2, \"price\": 4.99}], \"total\": 9.98}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-053",
+      "kind": "server",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:02:03.000Z",
+      "end_at": "2024-12-21T10:02:03.500Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"cart_id\": \"cart-789\", \"credit_card\": {\"number\": \"4916338506082832\", \"expiry\": \"03/27\", \"cvv\": \"789\"}}",
+        "ebpf.http.resp_body": "{\"order_id\": \"order-303\", \"status\": \"confirmed\", \"total\": 9.98}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-054",
+      "kind": "client",
+      "name": "POST /pay",
+      "start_at": "2024-12-21T10:02:03.050Z",
+      "end_at": "2024-12-21T10:02:03.200Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/pay",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"amount\": 9.98, \"currency\": \"USD\", \"credit_card\": {\"number\": \"4916338506082832\", \"expiry\": \"03/27\", \"cvv\": \"789\"}}",
+        "ebpf.http.resp_body": "{\"transaction_id\": \"txn-777\", \"status\": \"success\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-055",
+      "kind": "client",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:02:03.210Z",
+      "end_at": "2024-12-21T10:02:03.280Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"order_id\": \"order-303\", \"transaction_id\": \"txn-777\", \"user_id\": \"user-789\"}",
+        "ebpf.http.resp_body": "{\"receipt_id\": \"rcpt-777\", \"status\": \"completed\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-056",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:02:03.300Z",
+      "end_at": "2024-12-21T10:02:03.320Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"checkout_completed\", \"user_id\": \"user-789\", \"order_id\": \"order-303\", \"timestamp\": \"2024-12-21T10:02:03Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-057",
+      "kind": "client",
+      "name": "POST /metric",
+      "start_at": "2024-12-21T10:02:03.330Z",
+      "end_at": "2024-12-21T10:02:03.345Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/metric",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"metric\": \"order_total\", \"value\": 9.98, \"tags\": {\"user_id\": \"user-789\"}}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-058",
+      "kind": "producer",
+      "name": "orders-topic publish",
+      "start_at": "2024-12-21T10:02:03.350Z",
+      "end_at": "2024-12-21T10:02:03.365Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"order_id\": \"order-303\", \"user_id\": \"user-789\", \"items\": [{\"product_id\": \"prod-010\", \"quantity\": 2}], \"total\": 9.98}"
+      }
+    },
+    {
+      "id": "span-059",
+      "kind": "producer",
+      "name": "payments-topic publish",
+      "start_at": "2024-12-21T10:02:03.370Z",
+      "end_at": "2024-12-21T10:02:03.385Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"transaction_id\": \"txn-777\", \"order_id\": \"order-303\", \"amount\": 9.98, \"status\": \"success\"}"
+      }
+    },
+    {
+      "id": "span-060",
+      "kind": "consumer",
+      "name": "orders-topic consume",
+      "start_at": "2024-12-21T10:02:03.500Z",
+      "end_at": "2024-12-21T10:02:03.650Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-061",
+      "kind": "client",
+      "name": "INSERT orders",
+      "start_at": "2024-12-21T10:02:03.520Z",
+      "end_at": "2024-12-21T10:02:03.580Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.insertOne({order_id: 'order-303', user_id: 'user-789', total: 9.98, status: 'processing'})"
+      }
+    },
+    {
+      "id": "span-062",
+      "kind": "consumer",
+      "name": "payments-topic consume",
+      "start_at": "2024-12-21T10:02:03.510Z",
+      "end_at": "2024-12-21T10:02:03.700Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-063",
+      "kind": "client",
+      "name": "INSERT transactions",
+      "start_at": "2024-12-21T10:02:03.530Z",
+      "end_at": "2024-12-21T10:02:03.600Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "payments-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.transactions.insertOne({transaction_id: 'txn-777', order_id: 'order-303', amount: 9.98, status: 'success'})"
+      }
+    },
+    {
+      "id": "span-064",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:03:00.000Z",
+      "end_at": "2024-12-21T10:03:00.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-empty\", \"user_id\": \"user-789\", \"items\": [], \"total\": 0}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-065",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:03:01.000Z",
+      "end_at": "2024-12-21T10:03:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"product_id\": \"prod-015\", \"quantity\": 1}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-999\", \"items\": [{\"product_id\": \"prod-015\", \"quantity\": 1}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-066",
+      "kind": "server",
+      "name": "DELETE /cart/remove",
+      "start_at": "2024-12-21T10:03:02.000Z",
+      "end_at": "2024-12-21T10:03:02.040Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/remove",
+        "ebpf.http.method": "DELETE",
+        "ebpf.http.req_body": "{\"user_id\": \"user-789\", \"product_id\": \"prod-015\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-067",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:03:03.000Z",
+      "end_at": "2024-12-21T10:03:03.020Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"cart_item_removed\", \"user_id\": \"user-789\", \"product_id\": \"prod-015\", \"timestamp\": \"2024-12-21T10:03:02Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-068",
+      "kind": "server",
+      "name": "POST /signup",
+      "start_at": "2024-12-21T10:04:00.000Z",
+      "end_at": "2024-12-21T10:04:00.150Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signup",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"sarahlee\", \"email\": \"sarah.lee@email.com\", \"password\": \"mypass789\", \"phone\": \"+1-555-444-5555\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-069",
+      "kind": "client",
+      "name": "POST /users",
+      "start_at": "2024-12-21T10:04:00.010Z",
+      "end_at": "2024-12-21T10:04:00.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"sarahlee\", \"email\": \"sarah.lee@email.com\", \"phone\": \"+1-555-444-5555\"}",
+        "ebpf.http.resp_body": "{\"id\": \"user-333\", \"username\": \"sarahlee\", \"email\": \"sarah.lee@email.com\"}",
+        "ebpf.http.status_code": "201"
+      }
+    },
+    {
+      "id": "span-070",
+      "kind": "client",
+      "name": "INSERT users",
+      "start_at": "2024-12-21T10:04:00.020Z",
+      "end_at": "2024-12-21T10:04:00.070Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "INSERT INTO users (username, email, phone) VALUES ($1, $2, $3) RETURNING id",
+        "ebpf.db.query.values": "[\"sarahlee\", \"sarah.lee@email.com\", \"+1-555-444-5555\"]"
+      }
+    },
+    {
+      "id": "span-071",
+      "kind": "server",
+      "name": "POST /signin",
+      "start_at": "2024-12-21T10:04:01.000Z",
+      "end_at": "2024-12-21T10:04:01.100Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signin",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"sarahlee\", \"password\": \"mypass789\"}",
+        "ebpf.http.resp_body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\", \"user_id\": \"user-333\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-072",
+      "kind": "client",
+      "name": "GET /users/user-333",
+      "start_at": "2024-12-21T10:04:01.010Z",
+      "end_at": "2024-12-21T10:04:01.060Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-333",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-333\", \"username\": \"sarahlee\", \"email\": \"sarah.lee@email.com\", \"phone\": \"+1-555-444-5555\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-073",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:04:01.020Z",
+      "end_at": "2024-12-21T10:04:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE username = $1",
+        "ebpf.db.query.values": "[\"sarahlee\"]"
+      }
+    },
+    {
+      "id": "span-074",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:04:02.000Z",
+      "end_at": "2024-12-21T10:04:02.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-333\", \"product_id\": \"prod-007\", \"quantity\": 4}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-333\", \"items\": [{\"product_id\": \"prod-007\", \"quantity\": 4}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-075",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:04:03.000Z",
+      "end_at": "2024-12-21T10:04:03.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-333\", \"user_id\": \"user-333\", \"items\": [{\"product_id\": \"prod-007\", \"name\": \"Apples\", \"quantity\": 4, \"price\": 1.99}], \"total\": 7.96}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-076",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:04:04.000Z",
+      "end_at": "2024-12-21T10:04:04.020Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"cart_viewed\", \"user_id\": \"user-333\", \"cart_id\": \"cart-333\", \"timestamp\": \"2024-12-21T10:04:03Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-077",
+      "kind": "client",
+      "name": "POST /metric",
+      "start_at": "2024-12-21T10:04:04.030Z",
+      "end_at": "2024-12-21T10:04:04.045Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/metric",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"metric\": \"cart_value\", \"value\": 7.96, \"tags\": {\"user_id\": \"user-333\"}}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-078",
+      "kind": "server",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:05:00.000Z",
+      "end_at": "2024-12-21T10:05:00.500Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-333\", \"cart_id\": \"cart-333\", \"credit_card\": {\"number\": \"4024007103939509\", \"expiry\": \"11/27\", \"cvv\": \"321\"}}",
+        "ebpf.http.resp_body": "{\"order_id\": \"order-404\", \"status\": \"confirmed\", \"total\": 7.96}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-079",
+      "kind": "client",
+      "name": "POST /pay",
+      "start_at": "2024-12-21T10:05:00.050Z",
+      "end_at": "2024-12-21T10:05:00.200Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/pay",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"amount\": 7.96, \"currency\": \"USD\", \"credit_card\": {\"number\": \"4024007103939509\", \"expiry\": \"11/27\", \"cvv\": \"321\"}}",
+        "ebpf.http.resp_body": "{\"transaction_id\": \"txn-888\", \"status\": \"success\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-080",
+      "kind": "client",
+      "name": "POST /checkout",
+      "start_at": "2024-12-21T10:05:00.210Z",
+      "end_at": "2024-12-21T10:05:00.280Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "billing-service",
+        "ebpf.http.host": "billing-service.prod.svc",
+        "ebpf.http.path": "/checkout",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"order_id\": \"order-404\", \"transaction_id\": \"txn-888\", \"user_id\": \"user-333\"}",
+        "ebpf.http.resp_body": "{\"receipt_id\": \"rcpt-404\", \"status\": \"completed\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-081",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:05:00.300Z",
+      "end_at": "2024-12-21T10:05:00.320Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"checkout_completed\", \"user_id\": \"user-333\", \"order_id\": \"order-404\", \"timestamp\": \"2024-12-21T10:05:00Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-082",
+      "kind": "producer",
+      "name": "orders-topic publish",
+      "start_at": "2024-12-21T10:05:00.350Z",
+      "end_at": "2024-12-21T10:05:00.365Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"order_id\": \"order-404\", \"user_id\": \"user-333\", \"items\": [{\"product_id\": \"prod-007\", \"quantity\": 4}], \"total\": 7.96}"
+      }
+    },
+    {
+      "id": "span-083",
+      "kind": "producer",
+      "name": "payments-topic publish",
+      "start_at": "2024-12-21T10:05:00.370Z",
+      "end_at": "2024-12-21T10:05:00.385Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"transaction_id\": \"txn-888\", \"order_id\": \"order-404\", \"amount\": 7.96, \"status\": \"success\"}"
+      }
+    },
+    {
+      "id": "span-084",
+      "kind": "consumer",
+      "name": "orders-topic consume",
+      "start_at": "2024-12-21T10:05:00.500Z",
+      "end_at": "2024-12-21T10:05:00.650Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "orders-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-085",
+      "kind": "client",
+      "name": "INSERT orders",
+      "start_at": "2024-12-21T10:05:00.520Z",
+      "end_at": "2024-12-21T10:05:00.580Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.insertOne({order_id: 'order-404', user_id: 'user-333', total: 7.96, status: 'processing'})"
+      }
+    },
+    {
+      "id": "span-086",
+      "kind": "consumer",
+      "name": "payments-topic consume",
+      "start_at": "2024-12-21T10:05:00.510Z",
+      "end_at": "2024-12-21T10:05:00.700Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "payments-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-087",
+      "kind": "client",
+      "name": "INSERT transactions",
+      "start_at": "2024-12-21T10:05:00.530Z",
+      "end_at": "2024-12-21T10:05:00.600Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "payment-processor",
+        "ebpf.destination": "payments-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.transactions.insertOne({transaction_id: 'txn-888', order_id: 'order-404', amount: 7.96, status: 'success'})"
+      }
+    },
+    {
+      "id": "span-088",
+      "kind": "producer",
+      "name": "notifications-topic publish",
+      "start_at": "2024-12-21T10:05:00.610Z",
+      "end_at": "2024-12-21T10:05:00.625Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "notifications-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"user_id\": \"user-333\", \"email\": \"sarah.lee@email.com\", \"type\": \"order_confirmation\", \"order_id\": \"order-404\"}"
+      }
+    },
+    {
+      "id": "span-089",
+      "kind": "consumer",
+      "name": "notifications-topic consume",
+      "start_at": "2024-12-21T10:05:00.700Z",
+      "end_at": "2024-12-21T10:05:00.850Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "notification-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "notifications-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-090",
+      "kind": "server",
+      "name": "POST /signin",
+      "start_at": "2024-12-21T10:06:00.000Z",
+      "end_at": "2024-12-21T10:06:00.100Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/signin",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"username\": \"janedoe\", \"password\": \"janepass\"}",
+        "ebpf.http.resp_body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\", \"user_id\": \"user-456\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-091",
+      "kind": "client",
+      "name": "GET /users/user-456",
+      "start_at": "2024-12-21T10:06:00.010Z",
+      "end_at": "2024-12-21T10:06:00.060Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "users-service",
+        "ebpf.http.host": "users-service.prod.svc",
+        "ebpf.http.path": "/users/user-456",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"id\": \"user-456\", \"username\": \"janedoe\", \"email\": \"jane.doe@email.com\", \"phone\": \"+1-555-987-6543\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-092",
+      "kind": "client",
+      "name": "SELECT users",
+      "start_at": "2024-12-21T10:06:00.020Z",
+      "end_at": "2024-12-21T10:06:00.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "users-service",
+        "ebpf.destination": "postgres-db",
+        "ebpf.db.system": "postgres",
+        "ebpf.db.query": "SELECT id, username, email, phone FROM users WHERE username = $1",
+        "ebpf.db.query.values": "[\"janedoe\"]"
+      }
+    },
+    {
+      "id": "span-093",
+      "kind": "server",
+      "name": "POST /cart/add",
+      "start_at": "2024-12-21T10:06:01.000Z",
+      "end_at": "2024-12-21T10:06:01.050Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart/add",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"user_id\": \"user-456\", \"product_id\": \"prod-020\", \"quantity\": 2}",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-456\", \"items\": [{\"product_id\": \"prod-020\", \"quantity\": 2}]}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-094",
+      "kind": "server",
+      "name": "GET /cart",
+      "start_at": "2024-12-21T10:06:02.000Z",
+      "end_at": "2024-12-21T10:06:02.080Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "internet",
+        "ebpf.destination": "mysupermarket-service",
+        "ebpf.http.host": "mysupermarket.com",
+        "ebpf.http.path": "/cart",
+        "ebpf.http.method": "GET",
+        "ebpf.http.resp_body": "{\"cart_id\": \"cart-456\", \"user_id\": \"user-456\", \"items\": [{\"product_id\": \"prod-020\", \"name\": \"Cheese\", \"quantity\": 2, \"price\": 6.99}], \"total\": 13.98}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-095",
+      "kind": "client",
+      "name": "POST /log",
+      "start_at": "2024-12-21T10:06:02.100Z",
+      "end_at": "2024-12-21T10:06:02.120Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/log",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"event\": \"cart_viewed\", \"user_id\": \"user-456\", \"cart_id\": \"cart-456\", \"timestamp\": \"2024-12-21T10:06:02Z\"}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-096",
+      "kind": "client",
+      "name": "POST /metric",
+      "start_at": "2024-12-21T10:06:02.130Z",
+      "end_at": "2024-12-21T10:06:02.145Z",
+      "attributes": {
+        "ebpf.span.type": "NETWORK",
+        "ebpf.source": "mysupermarket-service",
+        "ebpf.destination": "analytics-service",
+        "ebpf.http.host": "analytics-service.prod.svc",
+        "ebpf.http.path": "/metric",
+        "ebpf.http.method": "POST",
+        "ebpf.http.req_body": "{\"metric\": \"cart_value\", \"value\": 13.98, \"tags\": {\"user_id\": \"user-456\"}}",
+        "ebpf.http.status_code": "200"
+      }
+    },
+    {
+      "id": "span-097",
+      "kind": "consumer",
+      "name": "inventory-topic consume",
+      "start_at": "2024-12-21T10:06:03.000Z",
+      "end_at": "2024-12-21T10:06:03.100Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "inventory-service",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "inventory-topic",
+        "ebpf.action": "queue.consume"
+      }
+    },
+    {
+      "id": "span-098",
+      "kind": "client",
+      "name": "SELECT orders",
+      "start_at": "2024-12-21T10:06:04.000Z",
+      "end_at": "2024-12-21T10:06:04.050Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.find({status: 'processing'}).limit(10)"
+      }
+    },
+    {
+      "id": "span-099",
+      "kind": "client",
+      "name": "UPDATE orders",
+      "start_at": "2024-12-21T10:06:05.000Z",
+      "end_at": "2024-12-21T10:06:05.060Z",
+      "attributes": {
+        "ebpf.span.type": "QUERY",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "orders-mongo",
+        "ebpf.db.system": "mongodb",
+        "ebpf.db.query": "db.orders.updateOne({order_id: 'order-101'}, {$set: {status: 'shipped'}})"
+      }
+    },
+    {
+      "id": "span-100",
+      "kind": "producer",
+      "name": "notifications-topic publish",
+      "start_at": "2024-12-21T10:06:05.100Z",
+      "end_at": "2024-12-21T10:06:05.115Z",
+      "attributes": {
+        "ebpf.span.type": "MESSAGE",
+        "ebpf.source": "order-processor",
+        "ebpf.destination": "kafka",
+        "ebpf.queue.topic": "notifications-topic",
+        "ebpf.action": "queue.produce",
+        "ebpf.queue.payload": "{\"user_id\": \"user-789\", \"email\": \"john.doe@email.com\", \"type\": \"order_shipped\", \"order_id\": \"order-101\"}"
+      }
+    }
+  ]
+}
