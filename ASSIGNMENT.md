@@ -337,7 +337,7 @@ Run the program to see the current output, then implement the processor and API 
 
 ---
 
-## Development Principles and Success Creiteria
+## Development Principles and Success Criteria
 
 Write production-ready code following these principles:
 - **Clean Code** - Write readable, maintainable code with clear naming and logical structure,  Structure your code so new features can be added easily
