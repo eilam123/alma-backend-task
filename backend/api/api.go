@@ -1,13 +1,17 @@
 package api
 
-type APIBackend struct{}
+import (
+	"github.com/alma/assignment/db"
+)
 
-func New() *APIBackend {
-	return &APIBackend{}
+type APIBackend struct {
+	db *db.DB
+}
+
+func New(database *db.DB) *APIBackend {
+	return &APIBackend{db: database}
 }
 
 // TODO: Implement GetCatalog
 
 // TODO: Implement GetConnections
-
-
