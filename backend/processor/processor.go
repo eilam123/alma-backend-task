@@ -3,13 +3,16 @@ package processor
 import (
 	"context"
 
+	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/models"
 )
 
-type SpanProcessor struct{}
+type SpanProcessor struct {
+	db *db.DB
+}
 
-func New() *SpanProcessor {
-	return &SpanProcessor{}
+func New(database *db.DB) *SpanProcessor {
+	return &SpanProcessor{db: database}
 }
 
 // TODO: Implement Process
