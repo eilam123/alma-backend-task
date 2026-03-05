@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -33,7 +34,25 @@ func main() {
 	}
 	fmt.Println("Processed spans successfully")
 
-	_ = api.New(database)
+	apiBackend := api.New(database)
+
+	catalog, err := apiBackend.GetCatalog(ctx)
+	if err != nil {
+		fmt.Printf("Error getting catalog: %v\n", err)
+		os.Exit(1)
+	}
+	catalogJSON, _ := json.MarshalIndent(catalog, "", "  ")
+	fmt.Println("\n=== Catalog ===")
+	fmt.Println(string(catalogJSON))
+
+	connections, err := apiBackend.GetConnections(ctx)
+	if err != nil {
+		fmt.Printf("Error getting connections: %v\n", err)
+		os.Exit(1)
+	}
+	connectionsJSON, _ := json.MarshalIndent(connections, "", "  ")
+	fmt.Println("\n=== Connections ===")
+	fmt.Println(string(connectionsJSON))
 }
 
 func createDBSchema(ctx context.Context, database *db.DB) {
