@@ -90,33 +90,41 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		return nil, err
 	}
 
-	result := &CatalogResponse{AppItems: make(map[string]AppItemResponse)}
+	allComponents, err := a.db.All(ctx, "components")
+	if err != nil {
+		return nil, err
+	}
 
+	allPIIs, err := a.db.All(ctx, "component_piis")
+	if err != nil {
+		return nil, err
+	}
+
+	piisByComponent := map[string][]models.PIIType{}
+	for _, piiRec := range allPIIs {
+		compID := str(piiRec["component_id"])
+		piisByComponent[compID] = append(piisByComponent[compID], models.PIIType(str(piiRec["pii_type"])))
+	}
+
+	componentsByAppItem := map[string][]db.Record{}
+	for _, compRec := range allComponents {
+		name := str(compRec["app_item_name"])
+		componentsByAppItem[name] = append(componentsByAppItem[name], compRec)
+	}
+
+	result := &CatalogResponse{AppItems: make(map[string]AppItemResponse)}
 	for _, aiRec := range appItemRecords {
 		name := str(aiRec["name"])
-
-		compRecords, err := a.db.Select(ctx, "components").Where("app_item_name", name).Execute(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		components := make([]CatalogComponentResponse, 0, len(compRecords))
-		for _, compRec := range compRecords {
+		comps := componentsByAppItem[name]
+		components := make([]CatalogComponentResponse, 0, len(comps))
+		for _, compRec := range comps {
 			compID := str(compRec["id"])
-
-			piiRecords, err := a.db.Select(ctx, "component_piis").Where("component_id", compID).Execute(ctx)
-			if err != nil {
-				return nil, err
+			piis := piisByComponent[compID]
+			if piis == nil {
+				piis = []models.PIIType{}
 			}
-
-			piis := make([]models.PIIType, 0, len(piiRecords))
-			for _, piiRec := range piiRecords {
-				piis = append(piis, models.PIIType(str(piiRec["pii_type"])))
-			}
-
 			components = append(components, buildCatalogComponent(compRec, piis))
 		}
-
 		result.AppItems[name] = AppItemResponse{
 			Name:       name,
 			Type:       models.AppItemType(str(aiRec["type"])),
