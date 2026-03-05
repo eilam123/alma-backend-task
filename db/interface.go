@@ -21,6 +21,10 @@ type Database interface {
 	InsertBatch(ctx context.Context, tableName string, records []Record) error
 	UpsertBatch(ctx context.Context, tableName string, records []Record) error
 
+	// Conflict operations
+	InsertOnConflict(ctx context.Context, tableName string, record Record, opts ConflictOptions) error
+	InsertBatchOnConflict(ctx context.Context, tableName string, records []Record, opts ConflictOptions) error
+
 	// Query operations
 	Select(ctx context.Context, tableName string) *QueryBuilder
 	All(ctx context.Context, tableName string) ([]Record, error)

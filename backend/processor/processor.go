@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 
 	"github.com/alma/assignment/db"
@@ -17,10 +18,10 @@ var piiPatterns = map[models.PIIType]*regexp.Regexp{
 }
 
 type SpanProcessor struct {
-	db *db.DB
+	db db.Database
 }
 
-func New(database *db.DB) *SpanProcessor {
+func New(database db.Database) *SpanProcessor {
 	return &SpanProcessor{db: database}
 }
 
@@ -44,7 +45,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		"name": source,
 		"type": string(sourceAppItemType(source)),
 	}); err != nil {
-		return err
+		return fmt.Errorf("upsert source app item %q: %w", source, err)
 	}
 
 	// 2. Upsert destination app item
@@ -52,7 +53,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		"name": destination,
 		"type": string(destinationAppItemType(spanType)),
 	}); err != nil {
-		return err
+		return fmt.Errorf("upsert destination app item %q: %w", destination, err)
 	}
 
 	// 3. Build component and upsert it
@@ -65,7 +66,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		"component_type": string(componentType),
 		"value":          value,
 	}); err != nil {
-		return err
+		return fmt.Errorf("upsert component %q: %w", componentID, err)
 	}
 
 	// 4. Detect PIIs and insert each
@@ -83,7 +84,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 			"component_id": componentID,
 			"pii_type":     string(piiType),
 		}, db.ConflictOptions{Action: db.ConflictDoNothing}); err != nil {
-			return err
+			return fmt.Errorf("insert pii %q for component %q: %w", piiType, componentID, err)
 		}
 	}
 
@@ -114,7 +115,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 			},
 		},
 	}); err != nil {
-		return err
+		return fmt.Errorf("upsert connection %q: %w", connID, err)
 	}
 
 	return nil
