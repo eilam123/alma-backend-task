@@ -2,16 +2,17 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/models"
 )
 
 type APIBackend struct {
-	db *db.DB
+	db db.Database
 }
 
-func New(database *db.DB) *APIBackend {
+func New(database db.Database) *APIBackend {
 	return &APIBackend{db: database}
 }
 
@@ -87,17 +88,17 @@ func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	appItemRecords, err := a.db.All(ctx, "app_items")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch app_items: %w", err)
 	}
 
 	allComponents, err := a.db.All(ctx, "components")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch components: %w", err)
 	}
 
 	allPIIs, err := a.db.All(ctx, "component_piis")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch component_piis: %w", err)
 	}
 
 	piisByComponent := map[string][]models.PIIType{}
@@ -138,7 +139,7 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, error) {
 	connRecords, err := a.db.All(ctx, "connections")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch connections: %w", err)
 	}
 
 	connections := make([]ConnectionResponse, 0, len(connRecords))
@@ -149,7 +150,7 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		for _, compID := range compIDs {
 			compRec, err := a.db.Get(ctx, "components", compID)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("get component %q: %w", compID, err)
 			}
 			components = append(components, buildConnectionComponent(compRec))
 		}

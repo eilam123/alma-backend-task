@@ -269,3 +269,127 @@ func containsPII(piis []models.PIIType, target models.PIIType) bool {
 	}
 	return false
 }
+
+func TestGetCatalog_EmptyDB(t *testing.T) {
+	ctx := context.Background()
+	database := setupDB(ctx)
+	api := backendapi.New(database)
+
+	catalog, err := api.GetCatalog(ctx)
+	if err != nil {
+		t.Fatalf("GetCatalog on empty DB failed: %v", err)
+	}
+	if len(catalog.AppItems) != 0 {
+		t.Errorf("expected empty catalog, got %d items", len(catalog.AppItems))
+	}
+}
+
+func TestGetConnections_EmptyDB(t *testing.T) {
+	ctx := context.Background()
+	database := setupDB(ctx)
+	api := backendapi.New(database)
+
+	connections, err := api.GetConnections(ctx)
+	if err != nil {
+		t.Fatalf("GetConnections on empty DB failed: %v", err)
+	}
+	if len(connections) != 0 {
+		t.Errorf("expected empty connections, got %d", len(connections))
+	}
+}
+
+func TestGetCatalog_SSNAndIPAddress(t *testing.T) {
+	ctx := context.Background()
+	database := setupDB(ctx)
+	p := processor.New(database)
+
+	spans := []models.RawSpan{
+		{
+			Id: "span-ssn",
+			Attributes: map[string]string{
+				"ebpf.span.type":       "QUERY",
+				"ebpf.source":          "app",
+				"ebpf.destination":     "postgres",
+				"ebpf.db.query":        "INSERT INTO users VALUES ($1, $2)",
+				"ebpf.db.query.values": `["123-45-6789"]`,
+			},
+		},
+		{
+			Id: "span-ip",
+			Attributes: map[string]string{
+				"ebpf.span.type":     "MESSAGE",
+				"ebpf.source":        "app",
+				"ebpf.destination":   "kafka",
+				"ebpf.queue.topic":   "audit",
+				"ebpf.queue.payload": `{"client_ip": "10.0.0.1"}`,
+			},
+		},
+	}
+	if err := p.Process(ctx, spans); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	api := backendapi.New(database)
+	catalog, err := api.GetCatalog(ctx)
+	if err != nil {
+		t.Fatalf("GetCatalog failed: %v", err)
+	}
+
+	pg := catalog.AppItems["postgres"]
+	if len(pg.Components) != 1 {
+		t.Fatalf("expected 1 component for postgres, got %d", len(pg.Components))
+	}
+	if !containsPII(pg.Components[0].PIIs, models.PIITypeSSN) {
+		t.Errorf("expected SSN PII on postgres component, got %v", pg.Components[0].PIIs)
+	}
+
+	kaf := catalog.AppItems["kafka"]
+	if len(kaf.Components) != 1 {
+		t.Fatalf("expected 1 component for kafka, got %d", len(kaf.Components))
+	}
+	if !containsPII(kaf.Components[0].PIIs, models.PIITypeIPAddress) {
+		t.Errorf("expected IP_ADDRESS PII on kafka component, got %v", kaf.Components[0].PIIs)
+	}
+}
+
+func TestGetConnections_MultipleComponents(t *testing.T) {
+	ctx := context.Background()
+	database := setupDB(ctx)
+	p := processor.New(database)
+
+	spans := []models.RawSpan{
+		{
+			Id: "span-mc1",
+			Attributes: map[string]string{
+				"ebpf.span.type":   "NETWORK",
+				"ebpf.source":      "frontend",
+				"ebpf.destination": "backend",
+				"ebpf.http.path":   "/users",
+			},
+		},
+		{
+			Id: "span-mc2",
+			Attributes: map[string]string{
+				"ebpf.span.type":   "NETWORK",
+				"ebpf.source":      "frontend",
+				"ebpf.destination": "backend",
+				"ebpf.http.path":   "/orders",
+			},
+		},
+	}
+	if err := p.Process(ctx, spans); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	api := backendapi.New(database)
+	connections, err := api.GetConnections(ctx)
+	if err != nil {
+		t.Fatalf("GetConnections failed: %v", err)
+	}
+	if len(connections) != 1 {
+		t.Fatalf("expected 1 connection, got %d", len(connections))
+	}
+	if len(connections[0].Components) != 2 {
+		t.Errorf("expected 2 components in connection, got %d", len(connections[0].Components))
+	}
+}
