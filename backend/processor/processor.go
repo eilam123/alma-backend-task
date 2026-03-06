@@ -99,20 +99,7 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		Action:       db.ConflictDoUpdate,
 		UpdateFields: []string{"component_ids"},
 		MergeFuncs: map[string]db.MergeFunc{
-			"component_ids": func(existing, new any) any {
-				existingIDs, _ := existing.([]string)
-				newIDs, _ := new.([]string)
-				seen := make(map[string]struct{}, len(existingIDs))
-				for _, id := range existingIDs {
-					seen[id] = struct{}{}
-				}
-				for _, id := range newIDs {
-					if _, ok := seen[id]; !ok {
-						existingIDs = append(existingIDs, id)
-					}
-				}
-				return existingIDs
-			},
+			"component_ids": mergeUniqueStrings,
 		},
 	}); err != nil {
 		return fmt.Errorf("upsert connection %q: %w", connID, err)
@@ -161,6 +148,21 @@ func piiFieldsForSpanType(spanType string, attrs map[string]string) []string {
 	default:
 		return nil
 	}
+}
+
+func mergeUniqueStrings(existing, incoming any) any {
+	existingIDs, _ := existing.([]string)
+	newIDs, _ := incoming.([]string)
+	seen := make(map[string]struct{}, len(existingIDs))
+	for _, id := range existingIDs {
+		seen[id] = struct{}{}
+	}
+	for _, id := range newIDs {
+		if _, ok := seen[id]; !ok {
+			existingIDs = append(existingIDs, id)
+		}
+	}
+	return existingIDs
 }
 
 func detectPIIs(text string) []models.PIIType {

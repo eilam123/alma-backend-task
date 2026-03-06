@@ -55,7 +55,7 @@ func main() {
 	fmt.Println(string(connectionsJSON))
 }
 
-func createDBSchema(ctx context.Context, database *db.DB) {
+func createDBSchema(ctx context.Context, database db.Database) {
 	database.CreateTable(ctx, db.TableSchema{
 		Name: "app_items",
 		Fields: []db.Field{
