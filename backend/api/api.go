@@ -53,21 +53,14 @@ func str(v any) string {
 }
 
 func buildCatalogComponent(rec db.Record, piis []models.PIIType) CatalogComponentResponse {
-	ct := models.ComponentType(str(rec["component_type"]))
-	value := str(rec["value"])
-	comp := CatalogComponentResponse{
-		ComponentType: ct,
+	base := buildConnectionComponent(rec)
+	return CatalogComponentResponse{
+		ComponentType: base.ComponentType,
+		Path:          base.Path,
+		Topic:         base.Topic,
+		Query:         base.Query,
 		PIIs:          piis,
 	}
-	switch ct {
-	case models.ComponentTypeEndpoint:
-		comp.Path = value
-	case models.ComponentTypeQueue:
-		comp.Topic = value
-	case models.ComponentTypeQuery:
-		comp.Query = value
-	}
-	return comp
 }
 
 func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
@@ -142,17 +135,26 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		return nil, fmt.Errorf("fetch connections: %w", err)
 	}
 
+	allComps, err := a.db.All(ctx, "components")
+	if err != nil {
+		return nil, fmt.Errorf("fetch components: %w", err)
+	}
+	compByID := make(map[string]db.Record, len(allComps))
+	for _, c := range allComps {
+		compByID[str(c["id"])] = c
+	}
+
 	connections := make([]ConnectionResponse, 0, len(connRecords))
 	for _, connRec := range connRecords {
 		compIDs, _ := connRec["component_ids"].([]string)
 
 		components := make([]ConnectionComponentResponse, 0, len(compIDs))
 		for _, compID := range compIDs {
-			compRec, err := a.db.Get(ctx, "components", compID)
-			if err != nil {
-				return nil, fmt.Errorf("get component %q: %w", compID, err)
+			rec, ok := compByID[compID]
+			if !ok {
+				return nil, fmt.Errorf("component %q not found", compID)
 			}
-			components = append(components, buildConnectionComponent(compRec))
+			components = append(components, buildConnectionComponent(rec))
 		}
 
 		connections = append(connections, ConnectionResponse{
