@@ -10,13 +10,17 @@ import (
 	"github.com/alma/assignment/backend/processor"
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/ebpf_agent"
+	"github.com/alma/assignment/schema"
 )
 
 func main() {
 	ctx := context.Background()
 
 	database := db.New()
-	createDBSchema(ctx, database)
+	if err := schema.CreateSchema(ctx, database); err != nil {
+		fmt.Printf("Error creating schema: %v\n", err)
+		os.Exit(1)
+	}
 
 	ebpfAgent := ebpf_agent.NewEBPFAgent("data/ebpf_spans.json")
 	spans, err := ebpfAgent.GetSpans()
@@ -53,63 +57,4 @@ func main() {
 	connectionsJSON, _ := json.MarshalIndent(connections, "", "  ")
 	fmt.Println("\n=== Connections ===")
 	fmt.Println(string(connectionsJSON))
-}
-
-func createDBSchema(ctx context.Context, database db.Database) {
-	if err := database.CreateTable(ctx, db.TableSchema{
-		Name: "app_items",
-		Fields: []db.Field{
-			{Name: "name", Type: db.FieldTypeString},
-			{Name: "type", Type: db.FieldTypeString},
-		},
-		PrimaryKey: "name",
-		Indexes:    []string{"type"},
-	}); err != nil {
-		fmt.Printf("Error creating app_items table: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := database.CreateTable(ctx, db.TableSchema{
-		Name: "components",
-		Fields: []db.Field{
-			{Name: "id", Type: db.FieldTypeString},
-			{Name: "app_item_name", Type: db.FieldTypeString},
-			{Name: "component_type", Type: db.FieldTypeString},
-			{Name: "value", Type: db.FieldTypeString},
-		},
-		PrimaryKey: "id",
-		Indexes:    []string{"app_item_name", "component_type"},
-	}); err != nil {
-		fmt.Printf("Error creating components table: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := database.CreateTable(ctx, db.TableSchema{
-		Name: "component_piis",
-		Fields: []db.Field{
-			{Name: "id", Type: db.FieldTypeString},
-			{Name: "component_id", Type: db.FieldTypeString},
-			{Name: "pii_type", Type: db.FieldTypeString},
-		},
-		PrimaryKey: "id",
-		Indexes:    []string{"component_id", "pii_type"},
-	}); err != nil {
-		fmt.Printf("Error creating component_piis table: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := database.CreateTable(ctx, db.TableSchema{
-		Name: "connections",
-		Fields: []db.Field{
-			{Name: "id", Type: db.FieldTypeString},
-			{Name: "source", Type: db.FieldTypeString},
-			{Name: "destination", Type: db.FieldTypeString},
-			{Name: "component_ids", Type: db.FieldTypeJSON},
-		},
-		PrimaryKey: "id",
-		Indexes:    []string{"source", "destination"},
-	}); err != nil {
-		fmt.Printf("Error creating connections table: %v\n", err)
-		os.Exit(1)
-	}
 }

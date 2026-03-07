@@ -2,6 +2,20 @@ package models
 
 import "time"
 
+// Span attribute keys from eBPF agent data.
+const (
+	AttrSpanType      = "ebpf.span.type"
+	AttrSource        = "ebpf.source"
+	AttrDestination   = "ebpf.destination"
+	AttrHTTPPath      = "ebpf.http.path"
+	AttrQueueTopic    = "ebpf.queue.topic"
+	AttrDBQuery       = "ebpf.db.query"
+	AttrHTTPReqBody   = "ebpf.http.req_body"
+	AttrHTTPRespBody  = "ebpf.http.resp_body"
+	AttrQueuePayload  = "ebpf.queue.payload"
+	AttrDBQueryValues = "ebpf.db.query.values"
+)
+
 type RawSpan struct {
 	Id         string            `json:"id"`
 	Kind       string            `json:"kind"`
