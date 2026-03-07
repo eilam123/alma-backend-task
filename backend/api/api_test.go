@@ -114,8 +114,8 @@ func TestGetCatalog(t *testing.T) {
 	if checkoutComp.ComponentType != models.ComponentTypeEndpoint {
 		t.Errorf("expected ENDPOINT, got %q", checkoutComp.ComponentType)
 	}
-	if checkoutComp.Path != "/checkout" {
-		t.Errorf("expected path /checkout, got %q", checkoutComp.Path)
+	if checkoutComp.Value != "/checkout" {
+		t.Errorf("expected value /checkout, got %q", checkoutComp.Value)
 	}
 	if !containsPII(checkoutComp.PIIs, models.PIITypeCreditCard) {
 		t.Errorf("expected CREDIT_CARD PII on /checkout component")
@@ -127,8 +127,8 @@ func TestGetCatalog(t *testing.T) {
 		t.Fatalf("users-service: expected 1 component, got %d", len(us.Components))
 	}
 	usersComp := us.Components[0]
-	if usersComp.Path != "/users/user-789" {
-		t.Errorf("expected path /users/user-789, got %q", usersComp.Path)
+	if usersComp.Value != "/users/user-789" {
+		t.Errorf("expected value /users/user-789, got %q", usersComp.Value)
 	}
 	if !containsPII(usersComp.PIIs, models.PIITypeEmail) {
 		t.Errorf("expected EMAIL PII on /users/user-789 component")
@@ -197,7 +197,7 @@ func TestGetConnections(t *testing.T) {
 	if len(conn.Components) != 1 {
 		t.Fatalf("internet->mysupermarket-service: expected 1 component, got %d", len(conn.Components))
 	}
-	if conn.Components[0].ComponentType != models.ComponentTypeEndpoint || conn.Components[0].Path != "/checkout" {
+	if conn.Components[0].ComponentType != models.ComponentTypeEndpoint || conn.Components[0].Value != "/checkout" {
 		t.Errorf("unexpected component: %+v", conn.Components[0])
 	}
 
@@ -206,7 +206,7 @@ func TestGetConnections(t *testing.T) {
 	if len(kafkaConn.Components) != 1 {
 		t.Fatalf("mysupermarket-service->kafka: expected 1 component, got %d", len(kafkaConn.Components))
 	}
-	if kafkaConn.Components[0].ComponentType != models.ComponentTypeQueue || kafkaConn.Components[0].Topic != "order-events" {
+	if kafkaConn.Components[0].ComponentType != models.ComponentTypeQueue || kafkaConn.Components[0].Value != "order-events" {
 		t.Errorf("unexpected kafka component: %+v", kafkaConn.Components[0])
 	}
 
