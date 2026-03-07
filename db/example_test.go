@@ -10,7 +10,7 @@ func TestExampleUsage(t *testing.T) {
 	ctx := context.Background()
 	database := New()
 
-	database.CreateTable(ctx, TableSchema{
+	_ = database.CreateTable(ctx, TableSchema{
 		Name: "users",
 		Fields: []Field{
 			{Name: "user_id", Type: FieldTypeString},
@@ -24,7 +24,7 @@ func TestExampleUsage(t *testing.T) {
 		Indexes:    []string{"email", "user_name"},
 	})
 
-	database.CreateTable(ctx, TableSchema{
+	_ = database.CreateTable(ctx, TableSchema{
 		Name: "profile_images",
 		Fields: []Field{
 			{Name: "image_id", Type: FieldTypeString},
@@ -63,21 +63,21 @@ func TestExampleUsage(t *testing.T) {
 		"email":     "bob@example.com",
 	})
 
-	database.Insert(ctx, "profile_images", Record{
+	_ = database.Insert(ctx, "profile_images", Record{
 		"image_id":   "img1",
 		"user_id":    "u1",
 		"url":        "https://cdn.example.com/john-avatar.jpg",
 		"is_primary": true,
 	})
 
-	database.Insert(ctx, "profile_images", Record{
+	_ = database.Insert(ctx, "profile_images", Record{
 		"image_id":   "img2",
 		"user_id":    "u1",
 		"url":        "https://cdn.example.com/john-cover.jpg",
 		"is_primary": false,
 	})
 
-	database.Insert(ctx, "profile_images", Record{
+	_ = database.Insert(ctx, "profile_images", Record{
 		"image_id":   "img3",
 		"user_id":    "u2",
 		"url":        "https://cdn.example.com/jane-avatar.jpg",

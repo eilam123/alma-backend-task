@@ -13,7 +13,7 @@ import (
 func setupDB(ctx context.Context) *db.DB {
 	database := db.New()
 
-	database.CreateTable(ctx, db.TableSchema{
+	_ = database.CreateTable(ctx, db.TableSchema{
 		Name: "app_items",
 		Fields: []db.Field{
 			{Name: "name", Type: db.FieldTypeString},
@@ -22,7 +22,7 @@ func setupDB(ctx context.Context) *db.DB {
 		PrimaryKey: "name",
 		Indexes:    []string{"type"},
 	})
-	database.CreateTable(ctx, db.TableSchema{
+	_ = database.CreateTable(ctx, db.TableSchema{
 		Name: "components",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
@@ -33,7 +33,7 @@ func setupDB(ctx context.Context) *db.DB {
 		PrimaryKey: "id",
 		Indexes:    []string{"app_item_name", "component_type"},
 	})
-	database.CreateTable(ctx, db.TableSchema{
+	_ = database.CreateTable(ctx, db.TableSchema{
 		Name: "component_piis",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
@@ -43,7 +43,7 @@ func setupDB(ctx context.Context) *db.DB {
 		PrimaryKey: "id",
 		Indexes:    []string{"component_id", "pii_type"},
 	})
-	database.CreateTable(ctx, db.TableSchema{
+	_ = database.CreateTable(ctx, db.TableSchema{
 		Name: "connections",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
