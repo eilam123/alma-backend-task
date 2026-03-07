@@ -36,11 +36,27 @@ func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) 
 
 func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) error {
 	attrs := span.Attributes
-	spanType := attrs["ebpf.span.type"]
-	source := attrs["ebpf.source"]
-	destination := attrs["ebpf.destination"]
+	spanType := attrs[models.AttrSpanType]
+	source := attrs[models.AttrSource]
+	destination := attrs[models.AttrDestination]
 
-	// 1. Upsert source app item
+	if err := p.upsertAppItems(ctx, source, destination, spanType); err != nil {
+		return err
+	}
+
+	componentID, err := p.upsertComponent(ctx, destination, spanType, attrs)
+	if err != nil {
+		return err
+	}
+
+	if err := p.detectAndInsertPIIs(ctx, componentID, spanType, attrs); err != nil {
+		return err
+	}
+
+	return p.upsertConnection(ctx, source, destination, componentID)
+}
+
+func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination, spanType string) error {
 	if err := p.db.Upsert(ctx, "app_items", db.Record{
 		"name": source,
 		"type": string(sourceAppItemType(source)),
@@ -48,7 +64,6 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		return fmt.Errorf("upsert source app item %q: %w", source, err)
 	}
 
-	// 2. Upsert destination app item
 	if err := p.db.Upsert(ctx, "app_items", db.Record{
 		"name": destination,
 		"type": string(destinationAppItemType(spanType)),
@@ -56,7 +71,10 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		return fmt.Errorf("upsert destination app item %q: %w", destination, err)
 	}
 
-	// 3. Build component and upsert it
+	return nil
+}
+
+func (p *SpanProcessor) upsertComponent(ctx context.Context, destination, spanType string, attrs map[string]string) (string, error) {
 	componentType, value := componentInfo(spanType, attrs)
 	componentID := string(componentType) + ":" + destination + ":" + value
 
@@ -66,10 +84,13 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 		"component_type": string(componentType),
 		"value":          value,
 	}); err != nil {
-		return fmt.Errorf("upsert component %q: %w", componentID, err)
+		return "", fmt.Errorf("upsert component %q: %w", componentID, err)
 	}
 
-	// 4. Detect PIIs and insert each
+	return componentID, nil
+}
+
+func (p *SpanProcessor) detectAndInsertPIIs(ctx context.Context, componentID, spanType string, attrs map[string]string) error {
 	piiFields := piiFieldsForSpanType(spanType, attrs)
 	detectedPIIs := make(map[models.PIIType]struct{})
 	for _, text := range piiFields {
@@ -87,8 +108,10 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 			return fmt.Errorf("insert pii %q for component %q: %w", piiType, componentID, err)
 		}
 	}
+	return nil
+}
 
-	// 5. Upsert connection, merging component_ids
+func (p *SpanProcessor) upsertConnection(ctx context.Context, source, destination, componentID string) error {
 	connID := source + ":" + destination
 	if err := p.db.InsertOnConflict(ctx, "connections", db.Record{
 		"id":            connID,
@@ -104,7 +127,6 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 	}); err != nil {
 		return fmt.Errorf("upsert connection %q: %w", connID, err)
 	}
-
 	return nil
 }
 
@@ -129,22 +151,22 @@ func destinationAppItemType(spanType string) models.AppItemType {
 func componentInfo(spanType string, attrs map[string]string) (models.ComponentType, string) {
 	switch spanType {
 	case "QUERY":
-		return models.ComponentTypeQuery, attrs["ebpf.db.query"]
+		return models.ComponentTypeQuery, attrs[models.AttrDBQuery]
 	case "MESSAGE":
-		return models.ComponentTypeQueue, attrs["ebpf.queue.topic"]
+		return models.ComponentTypeQueue, attrs[models.AttrQueueTopic]
 	default:
-		return models.ComponentTypeEndpoint, attrs["ebpf.http.path"]
+		return models.ComponentTypeEndpoint, attrs[models.AttrHTTPPath]
 	}
 }
 
 func piiFieldsForSpanType(spanType string, attrs map[string]string) []string {
 	switch spanType {
 	case "NETWORK":
-		return []string{attrs["ebpf.http.req_body"], attrs["ebpf.http.resp_body"]}
+		return []string{attrs[models.AttrHTTPReqBody], attrs[models.AttrHTTPRespBody]}
 	case "QUERY":
-		return []string{attrs["ebpf.db.query.values"]}
+		return []string{attrs[models.AttrDBQueryValues]}
 	case "MESSAGE":
-		return []string{attrs["ebpf.queue.payload"]}
+		return []string{attrs[models.AttrQueuePayload]}
 	default:
 		return nil
 	}
