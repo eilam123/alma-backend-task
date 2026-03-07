@@ -56,7 +56,7 @@ func main() {
 }
 
 func createDBSchema(ctx context.Context, database db.Database) {
-	database.CreateTable(ctx, db.TableSchema{
+	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "app_items",
 		Fields: []db.Field{
 			{Name: "name", Type: db.FieldTypeString},
@@ -64,9 +64,12 @@ func createDBSchema(ctx context.Context, database db.Database) {
 		},
 		PrimaryKey: "name",
 		Indexes:    []string{"type"},
-	})
+	}); err != nil {
+		fmt.Printf("Error creating app_items table: %v\n", err)
+		os.Exit(1)
+	}
 
-	database.CreateTable(ctx, db.TableSchema{
+	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "components",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
@@ -76,9 +79,12 @@ func createDBSchema(ctx context.Context, database db.Database) {
 		},
 		PrimaryKey: "id",
 		Indexes:    []string{"app_item_name", "component_type"},
-	})
+	}); err != nil {
+		fmt.Printf("Error creating components table: %v\n", err)
+		os.Exit(1)
+	}
 
-	database.CreateTable(ctx, db.TableSchema{
+	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "component_piis",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
@@ -87,9 +93,12 @@ func createDBSchema(ctx context.Context, database db.Database) {
 		},
 		PrimaryKey: "id",
 		Indexes:    []string{"component_id", "pii_type"},
-	})
+	}); err != nil {
+		fmt.Printf("Error creating component_piis table: %v\n", err)
+		os.Exit(1)
+	}
 
-	database.CreateTable(ctx, db.TableSchema{
+	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "connections",
 		Fields: []db.Field{
 			{Name: "id", Type: db.FieldTypeString},
@@ -99,5 +108,8 @@ func createDBSchema(ctx context.Context, database db.Database) {
 		},
 		PrimaryKey: "id",
 		Indexes:    []string{"source", "destination"},
-	})
+	}); err != nil {
+		fmt.Printf("Error creating connections table: %v\n", err)
+		os.Exit(1)
+	}
 }

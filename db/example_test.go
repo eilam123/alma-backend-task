@@ -36,7 +36,7 @@ func TestExampleUsage(t *testing.T) {
 		Indexes:    []string{"user_id"},
 	})
 
-	database.Insert(ctx, "users", Record{
+	_ = database.Insert(ctx, "users", Record{
 		"user_id":   "u1",
 		"user_name": "johndoe",
 		"f_name":    "John",
@@ -45,7 +45,7 @@ func TestExampleUsage(t *testing.T) {
 		"email":     "john@example.com",
 	})
 
-	database.Insert(ctx, "users", Record{
+	_ = database.Insert(ctx, "users", Record{
 		"user_id":   "u2",
 		"user_name": "janedoe",
 		"f_name":    "Jane",
@@ -54,7 +54,7 @@ func TestExampleUsage(t *testing.T) {
 		"email":     "jane@example.com",
 	})
 
-	database.Insert(ctx, "users", Record{
+	_ = database.Insert(ctx, "users", Record{
 		"user_id":   "u3",
 		"user_name": "bobsmith",
 		"f_name":    "Bob",
@@ -137,7 +137,7 @@ func TestExampleUsage(t *testing.T) {
 	}
 
 	fmt.Println("\n=== UPSERT (update existing) ===")
-	database.Upsert(ctx, "users", Record{
+	_ = database.Upsert(ctx, "users", Record{
 		"user_id": "u1",
 		"age":     31,
 	})
@@ -149,7 +149,7 @@ func TestExampleUsage(t *testing.T) {
 	fmt.Printf("Total users: %d\n", count)
 
 	fmt.Println("\n=== DELETE ===")
-	database.Delete(ctx, "users", "u3")
+	_ = database.Delete(ctx, "users", "u3")
 	countAfter, _ := database.Count(ctx, "users")
 	fmt.Printf("Users after delete: %d\n", countAfter)
 

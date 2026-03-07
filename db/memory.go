@@ -683,11 +683,9 @@ func (j *JoinBuilder) mergeRecords(left, right Record) Record {
 		result[key] = v
 	}
 
-	if right != nil {
-		for k, v := range right {
-			key := j.rightTable + "." + k
-			result[key] = v
-		}
+	for k, v := range right {
+		key := j.rightTable + "." + k
+		result[key] = v
 	}
 
 	return result
