@@ -18,9 +18,7 @@ func New(database db.Database) *APIBackend {
 
 type CatalogComponentResponse struct {
 	ComponentType models.ComponentType `json:"component_type"`
-	Path          string               `json:"path,omitempty"`
-	Topic         string               `json:"topic,omitempty"`
-	Query         string               `json:"query,omitempty"`
+	Value         string               `json:"value"`
 	PIIs          []models.PIIType     `json:"piis"`
 }
 
@@ -36,9 +34,7 @@ type CatalogResponse struct {
 
 type ConnectionComponentResponse struct {
 	ComponentType models.ComponentType `json:"component_type"`
-	Path          string               `json:"path,omitempty"`
-	Topic         string               `json:"topic,omitempty"`
-	Query         string               `json:"query,omitempty"`
+	Value         string               `json:"value"`
 }
 
 type ConnectionResponse struct {
@@ -53,29 +49,18 @@ func str(v any) string {
 }
 
 func buildCatalogComponent(rec db.Record, piis []models.PIIType) CatalogComponentResponse {
-	base := buildConnectionComponent(rec)
 	return CatalogComponentResponse{
-		ComponentType: base.ComponentType,
-		Path:          base.Path,
-		Topic:         base.Topic,
-		Query:         base.Query,
+		ComponentType: models.ComponentType(str(rec["component_type"])),
+		Value:         str(rec["value"]),
 		PIIs:          piis,
 	}
 }
 
 func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
-	ct := models.ComponentType(str(rec["component_type"]))
-	value := str(rec["value"])
-	comp := ConnectionComponentResponse{ComponentType: ct}
-	switch ct {
-	case models.ComponentTypeEndpoint:
-		comp.Path = value
-	case models.ComponentTypeQueue:
-		comp.Topic = value
-	case models.ComponentTypeQuery:
-		comp.Query = value
+	return ConnectionComponentResponse{
+		ComponentType: models.ComponentType(str(rec["component_type"])),
+		Value:         str(rec["value"]),
 	}
-	return comp
 }
 
 func indexPIIsByComponent(records []db.Record) map[string][]models.PIIType {

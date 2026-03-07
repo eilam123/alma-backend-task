@@ -8,6 +8,7 @@ import (
 
 	"github.com/alma/assignment/backend/api"
 	"github.com/alma/assignment/backend/processor"
+	"github.com/alma/assignment/config"
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/ebpf_agent"
 	"github.com/alma/assignment/schema"
@@ -15,6 +16,7 @@ import (
 
 func main() {
 	ctx := context.Background()
+	cfg := config.LoadConfig()
 
 	database := db.New()
 	if err := schema.CreateSchema(ctx, database); err != nil {
@@ -22,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ebpfAgent := ebpf_agent.NewEBPFAgent("data/ebpf_spans.json")
+	ebpfAgent := ebpf_agent.NewEBPFAgent(cfg.DataPath)
 	spans, err := ebpfAgent.GetSpans()
 	if err != nil {
 		fmt.Printf("Error loading spans: %v\n", err)

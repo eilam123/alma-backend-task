@@ -3,26 +3,34 @@ package processor
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/models"
 )
 
-var piiPatterns = map[models.PIIType]*regexp.Regexp{
-	models.PIITypeEmail:      regexp.MustCompile(`\b[\w.%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}\b`),
-	models.PIITypeCreditCard: regexp.MustCompile(`\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b`),
-	models.PIITypeSSN:        regexp.MustCompile(`\b\d{3}-\d{2}-\d{4}\b`),
-	models.PIITypePhone:      regexp.MustCompile(`\b(\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b`),
-	models.PIITypeIPAddress:  regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`),
-}
-
 type SpanProcessor struct {
-	db db.Database
+	db           db.Database
+	handlers     map[string]SpanTypeHandler
+	piiDetectors []PIIDetector
 }
 
-func New(database db.Database) *SpanProcessor {
-	return &SpanProcessor{db: database}
+func New(database db.Database, opts ...Option) *SpanProcessor {
+	p := &SpanProcessor{
+		db:           database,
+		handlers:     defaultHandlers(),
+		piiDetectors: DefaultPIIDetectors(),
+	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+func (p *SpanProcessor) handlerFor(spanType string) SpanTypeHandler {
+	if h, ok := p.handlers[spanType]; ok {
+		return h
+	}
+	return networkHandler{}
 }
 
 func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) error {
@@ -40,23 +48,25 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 	source := attrs[models.AttrSource]
 	destination := attrs[models.AttrDestination]
 
-	if err := p.upsertAppItems(ctx, source, destination, spanType); err != nil {
+	handler := p.handlerFor(spanType)
+
+	if err := p.upsertAppItems(ctx, source, destination, handler); err != nil {
 		return err
 	}
 
-	componentID, err := p.upsertComponent(ctx, destination, spanType, attrs)
+	componentID, err := p.upsertComponent(ctx, destination, handler, attrs)
 	if err != nil {
 		return err
 	}
 
-	if err := p.detectAndInsertPIIs(ctx, componentID, spanType, attrs); err != nil {
+	if err := p.detectAndInsertPIIs(ctx, componentID, handler, attrs); err != nil {
 		return err
 	}
 
 	return p.upsertConnection(ctx, source, destination, componentID)
 }
 
-func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination, spanType string) error {
+func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination string, handler SpanTypeHandler) error {
 	if err := p.db.Upsert(ctx, "app_items", db.Record{
 		"name": source,
 		"type": string(sourceAppItemType(source)),
@@ -66,7 +76,7 @@ func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination,
 
 	if err := p.db.Upsert(ctx, "app_items", db.Record{
 		"name": destination,
-		"type": string(destinationAppItemType(spanType)),
+		"type": string(handler.DestinationAppItemType()),
 	}); err != nil {
 		return fmt.Errorf("upsert destination app item %q: %w", destination, err)
 	}
@@ -74,8 +84,8 @@ func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination,
 	return nil
 }
 
-func (p *SpanProcessor) upsertComponent(ctx context.Context, destination, spanType string, attrs map[string]string) (string, error) {
-	componentType, value := componentInfo(spanType, attrs)
+func (p *SpanProcessor) upsertComponent(ctx context.Context, destination string, handler SpanTypeHandler, attrs map[string]string) (string, error) {
+	componentType, value := handler.ComponentInfo(attrs)
 	componentID := string(componentType) + ":" + destination + ":" + value
 
 	if err := p.db.Upsert(ctx, "components", db.Record{
@@ -90,11 +100,11 @@ func (p *SpanProcessor) upsertComponent(ctx context.Context, destination, spanTy
 	return componentID, nil
 }
 
-func (p *SpanProcessor) detectAndInsertPIIs(ctx context.Context, componentID, spanType string, attrs map[string]string) error {
-	piiFields := piiFieldsForSpanType(spanType, attrs)
+func (p *SpanProcessor) detectAndInsertPIIs(ctx context.Context, componentID string, handler SpanTypeHandler, attrs map[string]string) error {
+	piiFields := handler.PIIFields(attrs)
 	detectedPIIs := make(map[models.PIIType]struct{})
 	for _, text := range piiFields {
-		for _, piiType := range detectPIIs(text) {
+		for _, piiType := range p.detectPIIs(text) {
 			detectedPIIs[piiType] = struct{}{}
 		}
 	}
@@ -137,41 +147,6 @@ func sourceAppItemType(source string) models.AppItemType {
 	return models.AppItemTypeService
 }
 
-func destinationAppItemType(spanType string) models.AppItemType {
-	switch spanType {
-	case "QUERY":
-		return models.AppItemTypeDatabase
-	case "MESSAGE":
-		return models.AppItemTypeQueue
-	default:
-		return models.AppItemTypeService
-	}
-}
-
-func componentInfo(spanType string, attrs map[string]string) (models.ComponentType, string) {
-	switch spanType {
-	case "QUERY":
-		return models.ComponentTypeQuery, attrs[models.AttrDBQuery]
-	case "MESSAGE":
-		return models.ComponentTypeQueue, attrs[models.AttrQueueTopic]
-	default:
-		return models.ComponentTypeEndpoint, attrs[models.AttrHTTPPath]
-	}
-}
-
-func piiFieldsForSpanType(spanType string, attrs map[string]string) []string {
-	switch spanType {
-	case "NETWORK":
-		return []string{attrs[models.AttrHTTPReqBody], attrs[models.AttrHTTPRespBody]}
-	case "QUERY":
-		return []string{attrs[models.AttrDBQueryValues]}
-	case "MESSAGE":
-		return []string{attrs[models.AttrQueuePayload]}
-	default:
-		return nil
-	}
-}
-
 func mergeUniqueStrings(existing, incoming any) any {
 	existingIDs, _ := existing.([]string)
 	newIDs, _ := incoming.([]string)
@@ -187,11 +162,11 @@ func mergeUniqueStrings(existing, incoming any) any {
 	return existingIDs
 }
 
-func detectPIIs(text string) []models.PIIType {
+func (p *SpanProcessor) detectPIIs(text string) []models.PIIType {
 	var found []models.PIIType
-	for piiType, pattern := range piiPatterns {
-		if pattern.MatchString(text) {
-			found = append(found, piiType)
+	for _, detector := range p.piiDetectors {
+		if detector.Pattern.MatchString(text) {
+			found = append(found, detector.Type)
 		}
 	}
 	return found
