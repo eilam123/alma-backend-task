@@ -3,12 +3,16 @@ package schema
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/alma/assignment/db"
 )
 
 // CreateSchema sets up the database tables for app items, components, PIIs, and connections.
 func CreateSchema(ctx context.Context, database db.Database) error {
+	logger := slog.Default()
+
+	logger.Info("creating table", "table", "app_items")
 	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "app_items",
 		Fields: []db.Field{
@@ -21,6 +25,7 @@ func CreateSchema(ctx context.Context, database db.Database) error {
 		return fmt.Errorf("create app_items table: %w", err)
 	}
 
+	logger.Info("creating table", "table", "components")
 	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "components",
 		Fields: []db.Field{
@@ -35,6 +40,7 @@ func CreateSchema(ctx context.Context, database db.Database) error {
 		return fmt.Errorf("create components table: %w", err)
 	}
 
+	logger.Info("creating table", "table", "component_piis")
 	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "component_piis",
 		Fields: []db.Field{
@@ -48,6 +54,7 @@ func CreateSchema(ctx context.Context, database db.Database) error {
 		return fmt.Errorf("create component_piis table: %w", err)
 	}
 
+	logger.Info("creating table", "table", "connections")
 	if err := database.CreateTable(ctx, db.TableSchema{
 		Name: "connections",
 		Fields: []db.Field{
