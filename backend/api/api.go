@@ -3,17 +3,34 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/models"
 )
 
 type APIBackend struct {
-	db db.Database
+	db     db.Database
+	logger *slog.Logger
 }
 
-func New(database db.Database) *APIBackend {
-	return &APIBackend{db: database}
+// APIOption configures an APIBackend.
+type APIOption func(*APIBackend)
+
+// WithAPILogger sets a custom logger for the API backend.
+func WithAPILogger(logger *slog.Logger) APIOption {
+	return func(a *APIBackend) {
+		a.logger = logger
+	}
+}
+
+func New(database db.Database, opts ...APIOption) *APIBackend {
+	a := &APIBackend{db: database, logger: slog.Default()}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
 }
 
 type CatalogComponentResponse struct {
@@ -82,6 +99,9 @@ func indexComponentsByAppItem(records []db.Record) map[string][]db.Record {
 }
 
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
+	start := time.Now()
+	defer func() { a.logger.Info("GetCatalog completed", "duration", time.Since(start)) }()
+
 	appItemRecords, err := a.db.All(ctx, "app_items")
 	if err != nil {
 		return nil, fmt.Errorf("fetch app_items: %w", err)
@@ -124,6 +144,9 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 }
 
 func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, error) {
+	start := time.Now()
+	defer func() { a.logger.Info("GetConnections completed", "duration", time.Since(start)) }()
+
 	connRecords, err := a.db.All(ctx, "connections")
 	if err != nil {
 		return nil, fmt.Errorf("fetch connections: %w", err)

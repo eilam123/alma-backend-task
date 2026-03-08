@@ -3,6 +3,8 @@ package processor
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/alma/assignment/db"
 	"github.com/alma/assignment/models"
@@ -12,6 +14,7 @@ type SpanProcessor struct {
 	db           db.Database
 	handlers     map[string]SpanTypeHandler
 	piiDetectors []PIIDetector
+	logger       *slog.Logger
 }
 
 func New(database db.Database, opts ...Option) *SpanProcessor {
@@ -19,6 +22,7 @@ func New(database db.Database, opts ...Option) *SpanProcessor {
 		db:           database,
 		handlers:     defaultHandlers(),
 		piiDetectors: DefaultPIIDetectors(),
+		logger:       slog.Default(),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -34,11 +38,17 @@ func (p *SpanProcessor) handlerFor(spanType string) SpanTypeHandler {
 }
 
 func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) error {
+	start := time.Now()
+	p.logger.Info("starting span processing", "count", len(rawSpans))
+
 	for _, span := range rawSpans {
 		if err := p.processSpan(ctx, span); err != nil {
+			p.logger.Error("span processing failed", "error", err)
 			return err
 		}
 	}
+
+	p.logger.Info("span processing complete", "count", len(rawSpans), "duration", time.Since(start))
 	return nil
 }
 
@@ -47,6 +57,8 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 	spanType := attrs[models.AttrSpanType]
 	source := attrs[models.AttrSource]
 	destination := attrs[models.AttrDestination]
+
+	p.logger.Debug("processing span", "type", spanType, "source", source, "destination", destination)
 
 	handler := p.handlerFor(spanType)
 
@@ -109,6 +121,7 @@ func (p *SpanProcessor) detectAndInsertPIIs(ctx context.Context, componentID str
 		}
 	}
 	for piiType := range detectedPIIs {
+		p.logger.Info("PII detected", "type", piiType, "component_id", componentID)
 		piiID := componentID + ":" + string(piiType)
 		if err := p.db.InsertOnConflict(ctx, "component_piis", db.Record{
 			"id":           piiID,

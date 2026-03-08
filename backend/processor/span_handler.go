@@ -1,6 +1,10 @@
 package processor
 
-import "github.com/alma/assignment/models"
+import (
+	"log/slog"
+
+	"github.com/alma/assignment/models"
+)
 
 // SpanTypeHandler defines how a specific span type is processed.
 type SpanTypeHandler interface {
@@ -11,6 +15,13 @@ type SpanTypeHandler interface {
 
 // Option configures a SpanProcessor.
 type Option func(*SpanProcessor)
+
+// WithLogger sets a custom logger for the processor.
+func WithLogger(logger *slog.Logger) Option {
+	return func(p *SpanProcessor) {
+		p.logger = logger
+	}
+}
 
 // WithSpanHandler registers a handler for a given span type (e.g. "NETWORK", "QUERY").
 func WithSpanHandler(spanType string, handler SpanTypeHandler) Option {
