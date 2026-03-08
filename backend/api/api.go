@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alma/assignment/db"
+	"github.com/alma/assignment/metrics"
 	"github.com/alma/assignment/models"
 )
 
@@ -100,7 +101,11 @@ func indexComponentsByAppItem(records []db.Record) map[string][]db.Record {
 
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	start := time.Now()
-	defer func() { a.logger.Info("GetCatalog completed", "duration", time.Since(start)) }()
+	defer func() {
+		d := time.Since(start)
+		metrics.APIQueryDuration.WithLabelValues("catalog").Observe(d.Seconds())
+		a.logger.Info("GetCatalog completed", "duration", d)
+	}()
 
 	appItemRecords, err := a.db.All(ctx, "app_items")
 	if err != nil {
@@ -145,7 +150,11 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 
 func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, error) {
 	start := time.Now()
-	defer func() { a.logger.Info("GetConnections completed", "duration", time.Since(start)) }()
+	defer func() {
+		d := time.Since(start)
+		metrics.APIQueryDuration.WithLabelValues("connections").Observe(d.Seconds())
+		a.logger.Info("GetConnections completed", "duration", d)
+	}()
 
 	connRecords, err := a.db.All(ctx, "connections")
 	if err != nil {
