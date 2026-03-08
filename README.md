@@ -47,6 +47,22 @@ Given spans describing `internet -> mysupermarket-service -> users-service -> po
 go run main.go
 ```
 
+This processes spans, prints catalog/connections JSON to stdout, structured logs to stderr, and starts two HTTP servers:
+
+- **REST API** on `:8080` -- `GET /catalog`, `GET /connections`
+- **Prometheus metrics** on `:9090` -- `GET /metrics`
+
+```bash
+# Query the API
+curl localhost:8080/catalog
+curl localhost:8080/connections
+
+# Scrape Prometheus metrics
+curl localhost:9090/metrics
+```
+
+Press **Ctrl+C** for graceful shutdown.
+
 ### Test
 
 ```bash
@@ -80,6 +96,15 @@ docker run telemetry-analysis
 | Environment Variable | Default | Description |
 |---|---|---|
 | `DATA_PATH` | `data/ebpf_spans.json` | Path to the eBPF spans input file |
+| `HTTP_PORT` | `8080` | REST API server port |
+| `METRICS_PORT` | `9090` | Prometheus metrics server port |
+| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+
+Example with debug logging on custom ports:
+
+```bash
+LOG_LEVEL=debug HTTP_PORT=3000 METRICS_PORT=9191 go run main.go
+```
 
 ---
 
@@ -104,16 +129,19 @@ ebpf_spans.json
   APIBackend.GetConnections()   -- assemble connection map with components
       |
       v
-  JSON output to stdout
+  JSON output to stdout         -- CLI output on startup
+  REST API (:8080)              -- GET /catalog, GET /connections
+  Prometheus metrics (:9090)    -- GET /metrics
 ```
 
 ### Project Structure
 
 ```
 .
-├── main.go                          # Entry point: orchestrates the pipeline
+├── main.go                          # Entry point: pipeline, servers, graceful shutdown
 ├── config/
-│   └── config.go                    # Environment-based configuration
+│   ├── config.go                    # Environment-based configuration
+│   └── config_test.go               # Config unit tests
 ├── schema/
 │   └── schema.go                    # Database table definitions
 ├── models/
@@ -133,6 +161,12 @@ ebpf_spans.json
 │   └── api/
 │       ├── api.go                   # GetCatalog and GetConnections implementation
 │       └── api_test.go              # 6 API integration tests
+├── metrics/
+│   └── metrics.go                   # Prometheus metric definitions and registration
+├── server/
+│   ├── server.go                    # REST API server (GET /catalog, /connections)
+│   ├── metrics.go                   # Prometheus metrics server (GET /metrics)
+│   └── server_test.go               # Server endpoint tests
 ├── data/
 │   └── ebpf_spans.json              # 1600+ real eBPF span records
 ├── docs/                            # Comprehensive code walkthroughs (see Documentation)
@@ -204,6 +238,37 @@ Which fields are scanned depends on the span type:
 
 ---
 
+## Observability
+
+### Structured Logging
+
+All logging uses Go's built-in `log/slog` package with JSON output to stderr. Key log points:
+
+- **Processor**: span count, processing duration, individual span details (DEBUG), PII detections
+- **API**: query durations for catalog and connections
+- **Schema**: table creation events
+- **EBPFAgent**: file loading and span count
+
+Logs go to stderr so stdout remains clean for JSON data output (`go run main.go 2>/dev/null | jq .`).
+
+### Prometheus Metrics
+
+Available at `GET /metrics` on the metrics port (default `:9090`):
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `spans_processed_total` | Counter | -- | Total spans processed |
+| `spans_errors_total` | Counter | -- | Total span processing errors |
+| `pii_detections_total` | Counter | `type` | PII detections by type |
+| `db_operations_total` | Counter | `table`, `operation` | DB operations by table/operation |
+| `span_processing_duration_seconds` | Histogram | -- | Span batch processing duration |
+| `api_query_duration_seconds` | Histogram | `endpoint` | API query duration |
+| `app_items_total` | Gauge | `type` | App items by type |
+| `components_total` | Gauge | `type` | Components by type |
+| `connections_total` | Gauge | -- | Total connections |
+
+---
+
 ## Design Principles
 
 ### Dependency Inversion
@@ -265,7 +330,7 @@ GitHub Actions workflows on every push to `main` and on pull requests:
 
 ## Testing
 
-24 tests across two packages:
+Tests across multiple packages:
 
 **Processor tests** (`backend/processor/processor_test.go`):
 - Edge cases: empty spans, unknown span types
@@ -280,6 +345,13 @@ GitHub Actions workflows on every push to `main` and on pull requests:
 - Empty DB returns empty results (not errors)
 - SSN and IP address PII types in catalog
 - Multiple components merged into a single connection
+
+**Config tests** (`config/config_test.go`):
+- Default values, environment variable overrides, invalid input handling, slog level mapping
+
+**Server tests** (`server/server_test.go`):
+- Catalog and connections endpoints return 200 with valid JSON
+- Method-not-allowed routing
 
 ---
 
