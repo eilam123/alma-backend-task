@@ -10,10 +10,11 @@ const defaultDataPath = "data/ebpf_spans.json"
 
 // Config holds application configuration.
 type Config struct {
-	DataPath    string
-	HTTPPort    int    // REST API port, default 8080, env HTTP_PORT
-	MetricsPort int    // Prometheus metrics port, default 9090, env METRICS_PORT
-	LogLevel    string // "debug", "info", "warn", "error"; default "info", env LOG_LEVEL
+	DataPath            string
+	HTTPPort            int    // REST API port, default 8080, env HTTP_PORT
+	MetricsPort         int    // Prometheus metrics port, default 9090, env METRICS_PORT
+	LogLevel            string // "debug", "info", "warn", "error"; default "info", env LOG_LEVEL
+	BatchFlushThreshold int    // Flush accumulator when any map exceeds this size; 0 = accumulate all, env BATCH_FLUSH_THRESHOLD
 }
 
 // DefaultConfig returns the default configuration.
@@ -44,6 +45,11 @@ func LoadConfig() Config {
 	}
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
+	}
+	if v := os.Getenv("BATCH_FLUSH_THRESHOLD"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.BatchFlushThreshold = n
+		}
 	}
 	return cfg
 }
