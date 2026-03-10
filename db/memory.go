@@ -3,9 +3,21 @@ package db
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"sync"
+	"time"
 )
+
+// simulateLatency adds artificial delay to mimic real DB round-trips.
+func simulateLatency(write bool) {
+	base := 10 * time.Millisecond // read baseline
+	if write {
+		base = 30 * time.Millisecond // write baseline
+	}
+	jitter := time.Duration(rand.Int63n(int64(base / 2)))
+	time.Sleep(base + jitter)
+}
 
 type FieldType string
 
@@ -114,6 +126,7 @@ func (db *DB) DropTable(ctx context.Context, name string) error {
 }
 
 func (db *DB) Insert(ctx context.Context, tableName string, record Record) error {
+	simulateLatency(true)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -144,6 +157,7 @@ func (db *DB) Insert(ctx context.Context, tableName string, record Record) error
 
 // InsertOnConflict inserts a record with configurable conflict handling, similar to PostgreSQL's ON CONFLICT.
 func (db *DB) InsertOnConflict(ctx context.Context, tableName string, record Record, opts ConflictOptions) error {
+	simulateLatency(true)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -208,6 +222,7 @@ func (db *DB) InsertOnConflict(ctx context.Context, tableName string, record Rec
 }
 
 func (db *DB) Upsert(ctx context.Context, tableName string, record Record) error {
+	simulateLatency(true)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -246,6 +261,7 @@ func (db *DB) Upsert(ctx context.Context, tableName string, record Record) error
 // All records must be valid - if any record fails validation, no records are inserted.
 // If a record with the same primary key already exists, it will be overwritten.
 func (db *DB) InsertBatch(ctx context.Context, tableName string, records []Record) error {
+	simulateLatency(true)
 	if len(records) == 0 {
 		return nil
 	}
@@ -287,6 +303,7 @@ func (db *DB) InsertBatch(ctx context.Context, tableName string, records []Recor
 // InsertBatchOnConflict inserts multiple records with configurable conflict handling.
 // All records must be valid - if any record fails validation, no records are inserted.
 func (db *DB) InsertBatchOnConflict(ctx context.Context, tableName string, records []Record, opts ConflictOptions) error {
+	simulateLatency(true)
 	if len(records) == 0 {
 		return nil
 	}
@@ -374,6 +391,7 @@ func (db *DB) InsertBatchOnConflict(ctx context.Context, tableName string, recor
 // For existing records, it merges the new values into the existing record.
 // For new records, it inserts them as new entries.
 func (db *DB) UpsertBatch(ctx context.Context, tableName string, records []Record) error {
+	simulateLatency(true)
 	if len(records) == 0 {
 		return nil
 	}
@@ -421,6 +439,7 @@ func (db *DB) UpsertBatch(ctx context.Context, tableName string, records []Recor
 }
 
 func (db *DB) Get(ctx context.Context, tableName string, pk any) (Record, error) {
+	simulateLatency(false)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -442,6 +461,7 @@ func (db *DB) Get(ctx context.Context, tableName string, pk any) (Record, error)
 }
 
 func (db *DB) Delete(ctx context.Context, tableName string, pk any) error {
+	simulateLatency(true)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -492,6 +512,7 @@ func (q *QueryBuilder) Limit(n int) *QueryBuilder {
 }
 
 func (q *QueryBuilder) Execute(ctx context.Context) ([]Record, error) {
+	simulateLatency(false)
 	q.db.mu.RLock()
 	table, exists := q.db.tables[q.tableName]
 	q.db.mu.RUnlock()
@@ -532,6 +553,7 @@ func (q *QueryBuilder) matchesFilters(record Record) bool {
 }
 
 func (db *DB) Count(ctx context.Context, tableName string) (int, error) {
+	simulateLatency(false)
 	db.mu.RLock()
 	table, exists := db.tables[tableName]
 	db.mu.RUnlock()
@@ -573,14 +595,14 @@ const (
 )
 
 type JoinBuilder struct {
-	db            *DB
-	leftTable     string
-	rightTable    string
-	leftField     string
-	rightField    string
-	joinType      JoinType
-	filters       map[string]any
-	selectFields  []string
+	db           *DB
+	leftTable    string
+	rightTable   string
+	leftField    string
+	rightField   string
+	joinType     JoinType
+	filters      map[string]any
+	selectFields []string
 }
 
 func (db *DB) Join(leftTable, rightTable string) *JoinBuilder {
@@ -615,6 +637,7 @@ func (j *JoinBuilder) Fields(fields ...string) *JoinBuilder {
 }
 
 func (j *JoinBuilder) Execute(ctx context.Context) ([]Record, error) {
+	simulateLatency(false)
 	j.db.mu.RLock()
 	leftTbl, leftExists := j.db.tables[j.leftTable]
 	rightTbl, rightExists := j.db.tables[j.rightTable]

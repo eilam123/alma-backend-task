@@ -47,6 +47,7 @@ func main() {
 	}
 
 	p := processor.New(database, processor.WithLogger(logger))
+	processStart := time.Now()
 	if err := p.Process(ctx, spans); err != nil {
 		logger.Error("failed to process spans", "error", err)
 		os.Exit(1)
@@ -54,6 +55,7 @@ func main() {
 
 	apiBackend := api.New(database, api.WithAPILogger(logger))
 
+	catalogStart := time.Now()
 	catalog, err := apiBackend.GetCatalog(ctx)
 	if err != nil {
 		logger.Error("failed to get catalog", "error", err)
@@ -63,6 +65,7 @@ func main() {
 	fmt.Println("\n=== Catalog ===")
 	fmt.Println(string(catalogJSON))
 
+	connectionsStart := time.Now()
 	connections, err := apiBackend.GetConnections(ctx)
 	if err != nil {
 		logger.Error("failed to get connections", "error", err)
@@ -71,6 +74,13 @@ func main() {
 	connectionsJSON, _ := json.MarshalIndent(connections, "", "  ")
 	fmt.Println("\n=== Connections ===")
 	fmt.Println(string(connectionsJSON))
+
+	fmt.Printf("\nThis is where we expect to improve the latency for the processing and API calls.")
+	fmt.Printf("\n--------------------------------")
+	fmt.Printf("\n[perf] Process: %s\n", time.Since(processStart))
+	fmt.Printf("[perf] GetCatalog: %s\n", time.Since(catalogStart))
+	fmt.Printf("[perf] GetConnections: %s\n", time.Since(connectionsStart))
+	fmt.Printf("\n--------------------------------\n")
 
 	// Start HTTP servers
 	apiAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
