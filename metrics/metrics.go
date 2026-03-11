@@ -49,6 +49,21 @@ var (
 		Name: "connections_total",
 		Help: "Total number of connections.",
 	})
+
+	CacheHitsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "api_cache_hits_total",
+		Help: "Total number of API cache hits by endpoint.",
+	}, []string{"endpoint"})
+
+	CacheMissesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "api_cache_misses_total",
+		Help: "Total number of API cache misses by endpoint.",
+	}, []string{"endpoint"})
+
+	CacheInvalidationsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "api_cache_invalidations_total",
+		Help: "Total number of API cache invalidations.",
+	})
 )
 
 // Register registers all metrics with the default Prometheus registry.
@@ -63,5 +78,8 @@ func Register() {
 		AppItemsTotal,
 		ComponentsTotal,
 		ConnectionsTotal,
+		CacheHitsTotal,
+		CacheMissesTotal,
+		CacheInvalidationsTotal,
 	)
 }

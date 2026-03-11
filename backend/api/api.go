@@ -16,6 +16,7 @@ import (
 type APIBackend struct {
 	db     db.Database
 	logger *slog.Logger
+	cache  responseCache
 }
 
 // APIOption configures an APIBackend.
@@ -34,6 +35,14 @@ func New(database db.Database, opts ...APIOption) *APIBackend {
 		opt(a)
 	}
 	return a
+}
+
+// InvalidateCache clears all cached API responses, forcing the next
+// call to GetCatalog/GetConnections to re-read from the DB.
+func (a *APIBackend) InvalidateCache() {
+	a.cache.invalidate()
+	metrics.CacheInvalidationsTotal.Inc()
+	a.logger.Debug("API cache invalidated")
 }
 
 type CatalogComponentResponse struct {
@@ -91,6 +100,13 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		a.logger.Info("GetCatalog completed", "duration", d)
 	}()
 
+	if cached, ok := a.cache.getCatalog(); ok {
+		metrics.CacheHitsTotal.WithLabelValues("catalog").Inc()
+		return cached, nil
+	}
+	metrics.CacheMissesTotal.WithLabelValues("catalog").Inc()
+	gen := a.cache.currentGeneration()
+
 	// Fetch all 3 tables in parallel, using AllGroupedBy for pre-indexed results
 	var (
 		appItemRecords                        []db.Record
@@ -139,6 +155,7 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		}
 	}
 
+	a.cache.setCatalog(gen, result)
 	return result, nil
 }
 
@@ -149,6 +166,13 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		metrics.APIQueryDuration.WithLabelValues("connections").Observe(d.Seconds())
 		a.logger.Info("GetConnections completed", "duration", d)
 	}()
+
+	if cached, ok := a.cache.getConnections(); ok {
+		metrics.CacheHitsTotal.WithLabelValues("connections").Inc()
+		return cached, nil
+	}
+	metrics.CacheMissesTotal.WithLabelValues("connections").Inc()
+	gen := a.cache.currentGeneration()
 
 	// Fetch connections and components in parallel
 	var (
@@ -197,5 +221,6 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		})
 	}
 
+	a.cache.setConnections(gen, connections)
 	return connections, nil
 }

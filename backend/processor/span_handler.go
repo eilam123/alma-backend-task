@@ -13,6 +13,11 @@ type SpanTypeHandler interface {
 	PIIFields(attrs map[string]string) []string
 }
 
+// CacheInvalidator is called after processing completes to clear stale API caches.
+type CacheInvalidator interface {
+	InvalidateCache()
+}
+
 // Option configures a SpanProcessor.
 type Option func(*SpanProcessor)
 
@@ -34,6 +39,13 @@ func WithSpanHandler(spanType string, handler SpanTypeHandler) Option {
 func WithPIIDetectors(detectors []PIIDetector) Option {
 	return func(p *SpanProcessor) {
 		p.piiDetectors = detectors
+	}
+}
+
+// WithCacheInvalidator sets a cache invalidator to be called after processing completes.
+func WithCacheInvalidator(inv CacheInvalidator) Option {
+	return func(p *SpanProcessor) {
+		p.cacheInvalidator = inv
 	}
 }
 
