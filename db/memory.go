@@ -326,6 +326,16 @@ func (db *DB) InsertBatch(ctx context.Context, tableName string, records []Recor
 	for _, record := range records {
 		pk := record[table.schema.PrimaryKey]
 		pkStr := fmt.Sprintf("%v", pk)
+
+		if existing, exists := table.records[pkStr]; exists {
+			// Remove stale index entries before overwriting
+			for idxField := range table.indexes {
+				if oldVal, hasOld := existing[idxField]; hasOld {
+					removeFromIndex(table.indexes[idxField], oldVal, pkStr)
+				}
+			}
+		}
+
 		table.records[pkStr] = record
 
 		for idxField := range table.indexes {
