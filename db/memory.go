@@ -544,6 +544,16 @@ func (db *DB) Delete(ctx context.Context, tableName string, pk any) error {
 	defer table.mu.Unlock()
 
 	pkStr := fmt.Sprintf("%v", pk)
+
+	// Remove index entries before deleting the record
+	if existing, exists := table.records[pkStr]; exists {
+		for idxField := range table.indexes {
+			if val, hasVal := existing[idxField]; hasVal {
+				removeFromIndex(table.indexes[idxField], val, pkStr)
+			}
+		}
+	}
+
 	delete(table.records, pkStr)
 	return nil
 }
