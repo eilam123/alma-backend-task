@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -209,11 +210,8 @@ func (p *SpanProcessor) flush(ctx context.Context, acc *accumulator) error {
 		}()
 		wg.Wait()
 
-		if errItems != nil {
-			return errItems
-		}
-		if errComps != nil {
-			return errComps
+		if err := errors.Join(errItems, errComps); err != nil {
+			return err
 		}
 	}
 
@@ -256,11 +254,8 @@ func (p *SpanProcessor) flush(ctx context.Context, acc *accumulator) error {
 		}()
 		wg.Wait()
 
-		if errPIIs != nil {
-			return errPIIs
-		}
-		if errConns != nil {
-			return errConns
+		if err := errors.Join(errPIIs, errConns); err != nil {
+			return err
 		}
 	}
 

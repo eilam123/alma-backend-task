@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -114,14 +115,8 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	}()
 	wg.Wait()
 
-	if errItems != nil {
-		return nil, fmt.Errorf("fetch app_items: %w", errItems)
-	}
-	if errComps != nil {
-		return nil, fmt.Errorf("fetch components: %w", errComps)
-	}
-	if errPIIs != nil {
-		return nil, fmt.Errorf("fetch component_piis: %w", errPIIs)
+	if err := errors.Join(errItems, errComps, errPIIs); err != nil {
+		return nil, err
 	}
 
 	result := &CatalogResponse{AppItems: make(map[string]AppItemResponse)}
@@ -174,11 +169,8 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 	}()
 	wg.Wait()
 
-	if errConns != nil {
-		return nil, fmt.Errorf("fetch connections: %w", errConns)
-	}
-	if errComps != nil {
-		return nil, fmt.Errorf("fetch components: %w", errComps)
+	if err := errors.Join(errConns, errComps); err != nil {
+		return nil, err
 	}
 
 	compByID := make(map[string]db.Record, len(allComps))
