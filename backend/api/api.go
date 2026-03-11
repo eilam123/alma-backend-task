@@ -83,7 +83,6 @@ func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
 	}
 }
 
-
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	start := time.Now()
 	defer func() {
