@@ -37,6 +37,15 @@ func WithPIIDetectors(detectors []PIIDetector) Option {
 	}
 }
 
+// WithBatchFlushThreshold sets the threshold for flushing accumulated records.
+// When any accumulator map exceeds this size, a flush is triggered.
+// A value of 0 (default) means all spans are accumulated before a single flush.
+func WithBatchFlushThreshold(n int) Option {
+	return func(p *SpanProcessor) {
+		p.batchFlushThreshold = n
+	}
+}
+
 // networkHandler handles NETWORK spans.
 type networkHandler struct{}
 

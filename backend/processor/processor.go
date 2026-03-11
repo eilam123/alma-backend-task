@@ -2,8 +2,10 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/alma/assignment/db"
@@ -12,10 +14,11 @@ import (
 )
 
 type SpanProcessor struct {
-	db           db.Database
-	handlers     map[string]SpanTypeHandler
-	piiDetectors []PIIDetector
-	logger       *slog.Logger
+	db                  db.Database
+	handlers            map[string]SpanTypeHandler
+	piiDetectors        []PIIDetector
+	logger              *slog.Logger
+	batchFlushThreshold int // 0 means accumulate all before flushing
 }
 
 func New(database db.Database, opts ...Option) *SpanProcessor {
@@ -38,28 +41,80 @@ func (p *SpanProcessor) handlerFor(spanType string) SpanTypeHandler {
 	return networkHandler{}
 }
 
+// accumulator collects all DB writes in memory before flushing in batch.
+type accumulator struct {
+	appItems    map[string]db.Record // keyed by PK (name)
+	components  map[string]db.Record // keyed by PK (id)
+	piis        map[string]db.Record // keyed by PK (id)
+	connections map[string]db.Record // keyed by PK (id)
+}
+
+func newAccumulator() *accumulator {
+	return &accumulator{
+		appItems:    make(map[string]db.Record),
+		components:  make(map[string]db.Record),
+		piis:        make(map[string]db.Record),
+		connections: make(map[string]db.Record),
+	}
+}
+
+func (a *accumulator) exceedsThreshold(threshold int) bool {
+	return len(a.appItems) >= threshold ||
+		len(a.components) >= threshold ||
+		len(a.piis) >= threshold ||
+		len(a.connections) >= threshold
+}
+
+func (a *accumulator) reset() {
+	a.appItems = make(map[string]db.Record)
+	a.components = make(map[string]db.Record)
+	a.piis = make(map[string]db.Record)
+	a.connections = make(map[string]db.Record)
+}
+
 func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) error {
 	start := time.Now()
 	p.logger.Info("starting span processing", "count", len(rawSpans))
 
+	acc := newAccumulator()
+
+	// Phase 1: Accumulate writes in memory, flushing when threshold is exceeded
 	for _, span := range rawSpans {
-		if err := p.processSpan(ctx, span); err != nil {
-			p.logger.Error("span processing failed", "error", err)
-			metrics.SpansErrorsTotal.Inc()
-			return err
-		}
+		p.accumulateSpan(acc, span)
 		metrics.SpansProcessedTotal.Inc()
+
+		if p.batchFlushThreshold > 0 && acc.exceedsThreshold(p.batchFlushThreshold) {
+			if err := p.flush(ctx, acc); err != nil {
+				p.logger.Error("flush failed", "error", err)
+				metrics.SpansErrorsTotal.Inc()
+				return err
+			}
+			acc.reset()
+		}
+	}
+
+	// Phase 2: Flush remaining accumulated data
+	if err := p.flush(ctx, acc); err != nil {
+		p.logger.Error("flush failed", "error", err)
+		metrics.SpansErrorsTotal.Inc()
+		return err
 	}
 
 	duration := time.Since(start)
 	metrics.SpanProcessingDuration.Observe(duration.Seconds())
 	p.logger.Info("span processing complete", "count", len(rawSpans), "duration", duration)
 
-	p.recordGauges(ctx)
+	if p.batchFlushThreshold > 0 {
+		// With threshold flushing, accumulator was reset between flushes; read from DB
+		p.recordGaugesFromDB(ctx)
+	} else {
+		// Without threshold, accumulator has the full picture
+		p.recordGaugesFromAccumulator(acc)
+	}
 	return nil
 }
 
-func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) error {
+func (p *SpanProcessor) accumulateSpan(acc *accumulator, span models.RawSpan) {
 	attrs := span.Attributes
 	spanType := attrs[models.AttrSpanType]
 	source := attrs[models.AttrSource]
@@ -69,101 +124,150 @@ func (p *SpanProcessor) processSpan(ctx context.Context, span models.RawSpan) er
 
 	handler := p.handlerFor(spanType)
 
-	if err := p.upsertAppItems(ctx, source, destination, handler); err != nil {
-		return err
-	}
-
-	componentID, err := p.upsertComponent(ctx, destination, handler, attrs)
-	if err != nil {
-		return err
-	}
-
-	if err := p.detectAndInsertPIIs(ctx, componentID, handler, attrs); err != nil {
-		return err
-	}
-
-	return p.upsertConnection(ctx, source, destination, componentID)
-}
-
-func (p *SpanProcessor) upsertAppItems(ctx context.Context, source, destination string, handler SpanTypeHandler) error {
-	if err := p.db.Upsert(ctx, "app_items", db.Record{
+	// Accumulate app items
+	acc.appItems[source] = db.Record{
 		"name": source,
 		"type": string(sourceAppItemType(source)),
-	}); err != nil {
-		return fmt.Errorf("upsert source app item %q: %w", source, err)
 	}
-	metrics.DBOperationsTotal.WithLabelValues("app_items", "upsert").Inc()
-
-	if err := p.db.Upsert(ctx, "app_items", db.Record{
+	acc.appItems[destination] = db.Record{
 		"name": destination,
 		"type": string(handler.DestinationAppItemType()),
-	}); err != nil {
-		return fmt.Errorf("upsert destination app item %q: %w", destination, err)
 	}
-	metrics.DBOperationsTotal.WithLabelValues("app_items", "upsert").Inc()
 
-	return nil
-}
-
-func (p *SpanProcessor) upsertComponent(ctx context.Context, destination string, handler SpanTypeHandler, attrs map[string]string) (string, error) {
+	// Accumulate component
 	componentType, value := handler.ComponentInfo(attrs)
 	componentID := string(componentType) + ":" + destination + ":" + value
-
-	if err := p.db.Upsert(ctx, "components", db.Record{
+	acc.components[componentID] = db.Record{
 		"id":             componentID,
 		"app_item_name":  destination,
 		"component_type": string(componentType),
 		"value":          value,
-	}); err != nil {
-		return "", fmt.Errorf("upsert component %q: %w", componentID, err)
 	}
-	metrics.DBOperationsTotal.WithLabelValues("components", "upsert").Inc()
 
-	return componentID, nil
-}
-
-func (p *SpanProcessor) detectAndInsertPIIs(ctx context.Context, componentID string, handler SpanTypeHandler, attrs map[string]string) error {
+	// Accumulate PIIs
 	piiFields := handler.PIIFields(attrs)
-	detectedPIIs := make(map[models.PIIType]struct{})
 	for _, text := range piiFields {
 		for _, piiType := range p.detectPIIs(text) {
-			detectedPIIs[piiType] = struct{}{}
+			p.logger.Info("PII detected", "type", piiType, "component_id", componentID)
+			metrics.PIIDetectionsTotal.WithLabelValues(string(piiType)).Inc()
+			piiID := componentID + ":" + string(piiType)
+			if _, exists := acc.piis[piiID]; !exists {
+				acc.piis[piiID] = db.Record{
+					"id":           piiID,
+					"component_id": componentID,
+					"pii_type":     string(piiType),
+				}
+			}
 		}
 	}
-	for piiType := range detectedPIIs {
-		p.logger.Info("PII detected", "type", piiType, "component_id", componentID)
-		metrics.PIIDetectionsTotal.WithLabelValues(string(piiType)).Inc()
-		piiID := componentID + ":" + string(piiType)
-		if err := p.db.InsertOnConflict(ctx, "component_piis", db.Record{
-			"id":           piiID,
-			"component_id": componentID,
-			"pii_type":     string(piiType),
-		}, db.ConflictOptions{Action: db.ConflictDoNothing}); err != nil {
-			return fmt.Errorf("insert pii %q for component %q: %w", piiType, componentID, err)
+
+	// Accumulate connection with in-memory mergeUniqueStrings
+	connID := source + ":" + destination
+	if existing, ok := acc.connections[connID]; ok {
+		existingIDs, _ := existing["component_ids"].([]string)
+		merged := mergeUniqueStrings(existingIDs, []string{componentID})
+		existing["component_ids"] = merged
+	} else {
+		acc.connections[connID] = db.Record{
+			"id":            connID,
+			"source":        source,
+			"destination":   destination,
+			"component_ids": []string{componentID},
 		}
-		metrics.DBOperationsTotal.WithLabelValues("component_piis", "insert").Inc()
 	}
+}
+
+func (p *SpanProcessor) flush(ctx context.Context, acc *accumulator) error {
+	// Wave 1: app_items and components in parallel (independent tables)
+	var errItems, errComps error
+	var wg sync.WaitGroup
+
+	if len(acc.appItems) > 0 || len(acc.components) > 0 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			if len(acc.appItems) == 0 {
+				return
+			}
+			records := mapValues(acc.appItems)
+			if err := p.db.UpsertBatch(ctx, "app_items", records); err != nil {
+				errItems = fmt.Errorf("batch upsert app_items: %w", err)
+				return
+			}
+			metrics.DBOperationsTotal.WithLabelValues("app_items", "upsert").Add(float64(len(records)))
+		}()
+		go func() {
+			defer wg.Done()
+			if len(acc.components) == 0 {
+				return
+			}
+			records := mapValues(acc.components)
+			if err := p.db.UpsertBatch(ctx, "components", records); err != nil {
+				errComps = fmt.Errorf("batch upsert components: %w", err)
+				return
+			}
+			metrics.DBOperationsTotal.WithLabelValues("components", "upsert").Add(float64(len(records)))
+		}()
+		wg.Wait()
+
+		if err := errors.Join(errItems, errComps); err != nil {
+			return err
+		}
+	}
+
+	// Wave 2: PIIs and connections in parallel (independent tables)
+	var errPIIs, errConns error
+
+	if len(acc.piis) > 0 || len(acc.connections) > 0 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			if len(acc.piis) == 0 {
+				return
+			}
+			records := mapValues(acc.piis)
+			if err := p.db.InsertBatchOnConflict(ctx, "component_piis", records, db.ConflictOptions{
+				Action: db.ConflictDoNothing,
+			}); err != nil {
+				errPIIs = fmt.Errorf("batch insert component_piis: %w", err)
+				return
+			}
+			metrics.DBOperationsTotal.WithLabelValues("component_piis", "insert").Add(float64(len(records)))
+		}()
+		go func() {
+			defer wg.Done()
+			if len(acc.connections) == 0 {
+				return
+			}
+			records := mapValues(acc.connections)
+			if err := p.db.InsertBatchOnConflict(ctx, "connections", records, db.ConflictOptions{
+				Action:       db.ConflictDoUpdate,
+				UpdateFields: []string{"component_ids"},
+				MergeFuncs: map[string]db.MergeFunc{
+					"component_ids": mergeUniqueStrings,
+				},
+			}); err != nil {
+				errConns = fmt.Errorf("batch insert connections: %w", err)
+				return
+			}
+			metrics.DBOperationsTotal.WithLabelValues("connections", "upsert").Add(float64(len(records)))
+		}()
+		wg.Wait()
+
+		if err := errors.Join(errPIIs, errConns); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (p *SpanProcessor) upsertConnection(ctx context.Context, source, destination, componentID string) error {
-	connID := source + ":" + destination
-	if err := p.db.InsertOnConflict(ctx, "connections", db.Record{
-		"id":            connID,
-		"source":        source,
-		"destination":   destination,
-		"component_ids": []string{componentID},
-	}, db.ConflictOptions{
-		Action:       db.ConflictDoUpdate,
-		UpdateFields: []string{"component_ids"},
-		MergeFuncs: map[string]db.MergeFunc{
-			"component_ids": mergeUniqueStrings,
-		},
-	}); err != nil {
-		return fmt.Errorf("upsert connection %q: %w", connID, err)
+func mapValues(m map[string]db.Record) []db.Record {
+	records := make([]db.Record, 0, len(m))
+	for _, r := range m {
+		records = append(records, r)
 	}
-	metrics.DBOperationsTotal.WithLabelValues("connections", "upsert").Inc()
-	return nil
+	return records
 }
 
 func sourceAppItemType(source string) models.AppItemType {
@@ -188,7 +292,7 @@ func mergeUniqueStrings(existing, incoming any) any {
 	return existingIDs
 }
 
-func (p *SpanProcessor) recordGauges(ctx context.Context) {
+func (p *SpanProcessor) recordGaugesFromDB(ctx context.Context) {
 	appItems, _ := p.db.All(ctx, "app_items")
 	typeCounts := map[string]float64{}
 	for _, rec := range appItems {
@@ -211,6 +315,30 @@ func (p *SpanProcessor) recordGauges(ctx context.Context) {
 
 	connections, _ := p.db.All(ctx, "connections")
 	metrics.ConnectionsTotal.Set(float64(len(connections)))
+}
+
+func (p *SpanProcessor) recordGaugesFromAccumulator(acc *accumulator) {
+	// Compute app item type counts from accumulator
+	typeCounts := map[string]float64{}
+	for _, rec := range acc.appItems {
+		t, _ := rec["type"].(string)
+		typeCounts[t]++
+	}
+	for t, count := range typeCounts {
+		metrics.AppItemsTotal.WithLabelValues(t).Set(count)
+	}
+
+	// Compute component type counts from accumulator
+	compCounts := map[string]float64{}
+	for _, rec := range acc.components {
+		t, _ := rec["component_type"].(string)
+		compCounts[t]++
+	}
+	for t, count := range compCounts {
+		metrics.ComponentsTotal.WithLabelValues(t).Set(count)
+	}
+
+	metrics.ConnectionsTotal.Set(float64(len(acc.connections)))
 }
 
 func (p *SpanProcessor) detectPIIs(text string) []models.PIIType {

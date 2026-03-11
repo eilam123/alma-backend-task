@@ -46,7 +46,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := processor.New(database, processor.WithLogger(logger))
+	processorOpts := []processor.Option{processor.WithLogger(logger)}
+	if cfg.BatchFlushThreshold > 0 {
+		processorOpts = append(processorOpts, processor.WithBatchFlushThreshold(cfg.BatchFlushThreshold))
+	}
+	p := processor.New(database, processorOpts...)
 	processStart := time.Now()
 	if err := p.Process(ctx, spans); err != nil {
 		logger.Error("failed to process spans", "error", err)

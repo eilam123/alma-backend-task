@@ -47,7 +47,9 @@ func (s *APIServer) handleCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(catalog)
+	if err := json.NewEncoder(w).Encode(catalog); err != nil {
+		s.logger.Error("encode catalog failed", "error", err)
+	}
 }
 
 func (s *APIServer) handleConnections(w http.ResponseWriter, r *http.Request) {
@@ -58,5 +60,7 @@ func (s *APIServer) handleConnections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(connections)
+	if err := json.NewEncoder(w).Encode(connections); err != nil {
+		s.logger.Error("encode connections failed", "error", err)
+	}
 }

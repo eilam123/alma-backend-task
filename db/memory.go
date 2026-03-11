@@ -199,8 +199,23 @@ func (db *DB) InsertOnConflict(ctx context.Context, tableName string, record Rec
 				// Check if there's a custom merge function for this field
 				if opts.MergeFuncs != nil {
 					if mergeFn, hasMerge := opts.MergeFuncs[field]; hasMerge {
-						existing[field] = mergeFn(existing[field], newVal)
+						finalVal := mergeFn(existing[field], newVal)
+						// Fix stale index if this is an indexed field
+						if idx, isIndexed := table.indexes[field]; isIndexed {
+							if existing[field] != finalVal {
+								removeFromIndex(idx, existing[field], pkStr)
+								idx[finalVal] = append(idx[finalVal], pkStr)
+							}
+						}
+						existing[field] = finalVal
 						continue
+					}
+				}
+				// Fix stale index if this is an indexed field
+				if idx, isIndexed := table.indexes[field]; isIndexed {
+					if oldVal, hasOld := existing[field]; hasOld && oldVal != newVal {
+						removeFromIndex(idx, oldVal, pkStr)
+						idx[newVal] = append(idx[newVal], pkStr)
 					}
 				}
 				existing[field] = newVal
@@ -242,6 +257,15 @@ func (db *DB) Upsert(ctx context.Context, tableName string, record Record) error
 	pkStr := fmt.Sprintf("%v", pk)
 
 	if existing, exists := table.records[pkStr]; exists {
+		// Remove stale index entries before updating
+		for idxField := range table.indexes {
+			if newVal, hasNew := record[idxField]; hasNew {
+				if oldVal, hasOld := existing[idxField]; hasOld && oldVal != newVal {
+					removeFromIndex(table.indexes[idxField], oldVal, pkStr)
+					table.indexes[idxField][newVal] = append(table.indexes[idxField][newVal], pkStr)
+				}
+			}
+		}
 		for k, v := range record {
 			existing[k] = v
 		}
@@ -255,6 +279,20 @@ func (db *DB) Upsert(ctx context.Context, tableName string, record Record) error
 	}
 
 	return nil
+}
+
+// removeFromIndex removes a primary key from an index entry.
+func removeFromIndex(index map[any][]string, val any, pk string) {
+	pks := index[val]
+	for i, p := range pks {
+		if p == pk {
+			index[val] = append(pks[:i], pks[i+1:]...)
+			break
+		}
+	}
+	if len(index[val]) == 0 {
+		delete(index, val)
+	}
 }
 
 // InsertBatch inserts multiple records in a single atomic operation.
@@ -288,6 +326,16 @@ func (db *DB) InsertBatch(ctx context.Context, tableName string, records []Recor
 	for _, record := range records {
 		pk := record[table.schema.PrimaryKey]
 		pkStr := fmt.Sprintf("%v", pk)
+
+		if existing, exists := table.records[pkStr]; exists {
+			// Remove stale index entries before overwriting
+			for idxField := range table.indexes {
+				if oldVal, hasOld := existing[idxField]; hasOld {
+					removeFromIndex(table.indexes[idxField], oldVal, pkStr)
+				}
+			}
+		}
+
 		table.records[pkStr] = record
 
 		for idxField := range table.indexes {
@@ -363,8 +411,21 @@ func (db *DB) InsertBatchOnConflict(ctx context.Context, tableName string, recor
 					}
 					if opts.MergeFuncs != nil {
 						if mergeFn, hasMerge := opts.MergeFuncs[field]; hasMerge {
-							existing[field] = mergeFn(existing[field], newVal)
+							finalVal := mergeFn(existing[field], newVal)
+							if idx, isIndexed := table.indexes[field]; isIndexed {
+								if existing[field] != finalVal {
+									removeFromIndex(idx, existing[field], pkStr)
+									idx[finalVal] = append(idx[finalVal], pkStr)
+								}
+							}
+							existing[field] = finalVal
 							continue
+						}
+					}
+					if idx, isIndexed := table.indexes[field]; isIndexed {
+						if oldVal, hasOld := existing[field]; hasOld && oldVal != newVal {
+							removeFromIndex(idx, oldVal, pkStr)
+							idx[newVal] = append(idx[newVal], pkStr)
 						}
 					}
 					existing[field] = newVal
@@ -420,6 +481,15 @@ func (db *DB) UpsertBatch(ctx context.Context, tableName string, records []Recor
 		pkStr := fmt.Sprintf("%v", pk)
 
 		if existing, exists := table.records[pkStr]; exists {
+			// Remove stale index entries before updating
+			for idxField := range table.indexes {
+				if newVal, hasNew := record[idxField]; hasNew {
+					if oldVal, hasOld := existing[idxField]; hasOld && oldVal != newVal {
+						removeFromIndex(table.indexes[idxField], oldVal, pkStr)
+						table.indexes[idxField][newVal] = append(table.indexes[idxField][newVal], pkStr)
+					}
+				}
+			}
 			// Merge: update existing record with new values
 			for k, v := range record {
 				existing[k] = v
@@ -474,6 +544,16 @@ func (db *DB) Delete(ctx context.Context, tableName string, pk any) error {
 	defer table.mu.Unlock()
 
 	pkStr := fmt.Sprintf("%v", pk)
+
+	// Remove index entries before deleting the record
+	if existing, exists := table.records[pkStr]; exists {
+		for idxField := range table.indexes {
+			if val, hasVal := existing[idxField]; hasVal {
+				removeFromIndex(table.indexes[idxField], val, pkStr)
+			}
+		}
+	}
+
 	delete(table.records, pkStr)
 	return nil
 }
@@ -524,11 +604,25 @@ func (q *QueryBuilder) Execute(ctx context.Context) ([]Record, error) {
 	table.mu.RLock()
 	defer table.mu.RUnlock()
 
+	// Try to use an index to narrow down candidates
+	candidates := q.indexCandidates(table)
+
 	var results []Record
 
-	for _, record := range table.records {
-		if q.matchesFilters(record) {
-			results = append(results, record)
+	if candidates != nil {
+		// Index-accelerated path: only check candidate records
+		for _, pkStr := range candidates {
+			record, ok := table.records[pkStr]
+			if ok && q.matchesFilters(record) {
+				results = append(results, record)
+			}
+		}
+	} else {
+		// Full scan fallback
+		for _, record := range table.records {
+			if q.matchesFilters(record) {
+				results = append(results, record)
+			}
 		}
 	}
 
@@ -537,6 +631,20 @@ func (q *QueryBuilder) Execute(ctx context.Context) ([]Record, error) {
 	}
 
 	return results, nil
+}
+
+// indexCandidates returns candidate PKs from an index if any filter field is indexed.
+// Returns nil if no index can be used.
+func (q *QueryBuilder) indexCandidates(table *Table) []string {
+	for field, value := range q.filters {
+		if idx, ok := table.indexes[field]; ok {
+			if pks, found := idx[value]; found {
+				return pks
+			}
+			return []string{} // index exists but no matching value
+		}
+	}
+	return nil
 }
 
 func (q *QueryBuilder) matchesFilters(record Record) bool {
@@ -570,6 +678,48 @@ func (db *DB) Count(ctx context.Context, tableName string) (int, error) {
 
 func (db *DB) All(ctx context.Context, tableName string) ([]Record, error) {
 	return db.Select(ctx, tableName).Execute(ctx)
+}
+
+// AllGroupedBy returns all records in a table grouped by the given field value.
+// If the field is an indexed field, it uses the index for O(1) grouping.
+func (db *DB) AllGroupedBy(ctx context.Context, tableName string, field string) (map[any][]Record, error) {
+	simulateLatency(false)
+	db.mu.RLock()
+	table, exists := db.tables[tableName]
+	db.mu.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("table %s does not exist", tableName)
+	}
+
+	table.mu.RLock()
+	defer table.mu.RUnlock()
+
+	// If field is indexed, use the index for grouping
+	if idx, hasIndex := table.indexes[field]; hasIndex {
+		result := make(map[any][]Record, len(idx))
+		for val, pks := range idx {
+			records := make([]Record, 0, len(pks))
+			for _, pk := range pks {
+				if rec, ok := table.records[pk]; ok {
+					records = append(records, rec)
+				}
+			}
+			if len(records) > 0 {
+				result[val] = records
+			}
+		}
+		return result, nil
+	}
+
+	// Fallback: full scan
+	result := make(map[any][]Record)
+	for _, rec := range table.records {
+		if val, ok := rec[field]; ok {
+			result[val] = append(result[val], rec)
+		}
+	}
+	return result, nil
 }
 
 func (db *DB) Clear(ctx context.Context) error {

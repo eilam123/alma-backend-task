@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/alma/assignment/db"
@@ -81,24 +83,6 @@ func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
 	}
 }
 
-func indexPIIsByComponent(records []db.Record) map[string][]models.PIIType {
-	result := map[string][]models.PIIType{}
-	for _, rec := range records {
-		compID := str(rec["component_id"])
-		result[compID] = append(result[compID], models.PIIType(str(rec["pii_type"])))
-	}
-	return result
-}
-
-func indexComponentsByAppItem(records []db.Record) map[string][]db.Record {
-	result := map[string][]db.Record{}
-	for _, rec := range records {
-		name := str(rec["app_item_name"])
-		result[name] = append(result[name], rec)
-	}
-	return result
-}
-
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	start := time.Now()
 	defer func() {
@@ -107,23 +91,32 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		a.logger.Info("GetCatalog completed", "duration", d)
 	}()
 
-	appItemRecords, err := a.db.All(ctx, "app_items")
-	if err != nil {
-		return nil, fmt.Errorf("fetch app_items: %w", err)
-	}
+	// Fetch all 3 tables in parallel, using AllGroupedBy for pre-indexed results
+	var (
+		appItemRecords                        []db.Record
+		componentsByAppItem, piisByComponentR map[any][]db.Record
+		errItems, errComps, errPIIs           error
+		wg                                    sync.WaitGroup
+	)
 
-	allComponents, err := a.db.All(ctx, "components")
-	if err != nil {
-		return nil, fmt.Errorf("fetch components: %w", err)
-	}
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		appItemRecords, errItems = a.db.All(ctx, "app_items")
+	}()
+	go func() {
+		defer wg.Done()
+		componentsByAppItem, errComps = a.db.AllGroupedBy(ctx, "components", "app_item_name")
+	}()
+	go func() {
+		defer wg.Done()
+		piisByComponentR, errPIIs = a.db.AllGroupedBy(ctx, "component_piis", "component_id")
+	}()
+	wg.Wait()
 
-	allPIIs, err := a.db.All(ctx, "component_piis")
-	if err != nil {
-		return nil, fmt.Errorf("fetch component_piis: %w", err)
+	if err := errors.Join(errItems, errComps, errPIIs); err != nil {
+		return nil, err
 	}
-
-	piisByComponent := indexPIIsByComponent(allPIIs)
-	componentsByAppItem := indexComponentsByAppItem(allComponents)
 
 	result := &CatalogResponse{AppItems: make(map[string]AppItemResponse)}
 	for _, aiRec := range appItemRecords {
@@ -132,9 +125,10 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		components := make([]CatalogComponentResponse, 0, len(comps))
 		for _, compRec := range comps {
 			compID := str(compRec["id"])
-			piis := piisByComponent[compID]
-			if piis == nil {
-				piis = []models.PIIType{}
+			piiRecs := piisByComponentR[compID]
+			piis := make([]models.PIIType, 0, len(piiRecs))
+			for _, pr := range piiRecs {
+				piis = append(piis, models.PIIType(str(pr["pii_type"])))
 			}
 			components = append(components, buildCatalogComponent(compRec, piis))
 		}
@@ -156,15 +150,28 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		a.logger.Info("GetConnections completed", "duration", d)
 	}()
 
-	connRecords, err := a.db.All(ctx, "connections")
-	if err != nil {
-		return nil, fmt.Errorf("fetch connections: %w", err)
+	// Fetch connections and components in parallel
+	var (
+		connRecords, allComps []db.Record
+		errConns, errComps    error
+		wg                    sync.WaitGroup
+	)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		connRecords, errConns = a.db.All(ctx, "connections")
+	}()
+	go func() {
+		defer wg.Done()
+		allComps, errComps = a.db.All(ctx, "components")
+	}()
+	wg.Wait()
+
+	if err := errors.Join(errConns, errComps); err != nil {
+		return nil, err
 	}
 
-	allComps, err := a.db.All(ctx, "components")
-	if err != nil {
-		return nil, fmt.Errorf("fetch components: %w", err)
-	}
 	compByID := make(map[string]db.Record, len(allComps))
 	for _, c := range allComps {
 		compByID[str(c["id"])] = c

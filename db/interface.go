@@ -28,6 +28,7 @@ type Database interface {
 	// Query operations
 	Select(ctx context.Context, tableName string) *QueryBuilder
 	All(ctx context.Context, tableName string) ([]Record, error)
+	AllGroupedBy(ctx context.Context, tableName string, field string) (map[any][]Record, error)
 	Count(ctx context.Context, tableName string) (int, error)
 
 	// Join operations
