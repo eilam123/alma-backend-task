@@ -59,10 +59,10 @@ func newAccumulator() *accumulator {
 }
 
 func (a *accumulator) exceedsThreshold(threshold int) bool {
-	return len(a.appItems) > threshold ||
-		len(a.components) > threshold ||
-		len(a.piis) > threshold ||
-		len(a.connections) > threshold
+	return len(a.appItems) >= threshold ||
+		len(a.components) >= threshold ||
+		len(a.piis) >= threshold ||
+		len(a.connections) >= threshold
 }
 
 func (a *accumulator) reset() {
