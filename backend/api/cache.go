@@ -6,6 +6,9 @@ import "sync"
 // Zero value is ready to use with empty (uncached) state.
 // A generation counter prevents stale writes: if an invalidation occurs
 // between a cache miss and the subsequent set call, the set is rejected.
+//
+// Callers must not modify the returned cached values — they are shared
+// across all concurrent readers.
 type responseCache struct {
 	mu                sync.RWMutex
 	generation        uint64
@@ -14,17 +17,13 @@ type responseCache struct {
 	connectionsCached bool // needed because nil slice is a valid empty result
 }
 
-func (c *responseCache) getCatalog() (*CatalogResponse, bool) {
+// getCatalog returns the cached catalog and the current generation atomically.
+// If the catalog is cached, the caller should use it directly.
+// If not, the caller should use the returned generation when calling setCatalog.
+func (c *responseCache) getCatalog() (*CatalogResponse, uint64) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.catalog, c.catalog != nil
-}
-
-// generation returns the current cache generation under read lock.
-func (c *responseCache) currentGeneration() uint64 {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.generation
+	return c.catalog, c.generation
 }
 
 // setCatalog stores the catalog if the generation has not changed since the fetch started.
@@ -36,10 +35,13 @@ func (c *responseCache) setCatalog(gen uint64, v *CatalogResponse) {
 	}
 }
 
-func (c *responseCache) getConnections() ([]ConnectionResponse, bool) {
+// getConnections returns the cached connections and the current generation atomically.
+// If cached is true, the caller should use the value directly.
+// If not, the caller should use the returned generation when calling setConnections.
+func (c *responseCache) getConnections() ([]ConnectionResponse, uint64, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.connections, c.connectionsCached
+	return c.connections, c.generation, c.connectionsCached
 }
 
 // setConnections stores the connections if the generation has not changed since the fetch started.

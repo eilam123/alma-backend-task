@@ -100,12 +100,12 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		a.logger.Info("GetCatalog completed", "duration", d)
 	}()
 
-	if cached, ok := a.cache.getCatalog(); ok {
+	cached, gen := a.cache.getCatalog()
+	if cached != nil {
 		metrics.CacheHitsTotal.WithLabelValues("catalog").Inc()
 		return cached, nil
 	}
 	metrics.CacheMissesTotal.WithLabelValues("catalog").Inc()
-	gen := a.cache.currentGeneration()
 
 	// Fetch all 3 tables in parallel, using AllGroupedBy for pre-indexed results
 	var (
@@ -167,12 +167,12 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		a.logger.Info("GetConnections completed", "duration", d)
 	}()
 
-	if cached, ok := a.cache.getConnections(); ok {
+	cached, gen, ok := a.cache.getConnections()
+	if ok {
 		metrics.CacheHitsTotal.WithLabelValues("connections").Inc()
 		return cached, nil
 	}
 	metrics.CacheMissesTotal.WithLabelValues("connections").Inc()
-	gen := a.cache.currentGeneration()
 
 	// Fetch connections and components in parallel
 	var (
