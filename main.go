@@ -46,7 +46,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	processorOpts := []processor.Option{processor.WithLogger(logger)}
+	apiBackend := api.New(database, api.WithAPILogger(logger))
+
+	processorOpts := []processor.Option{
+		processor.WithLogger(logger),
+		processor.WithCacheInvalidator(apiBackend),
+	}
 	if cfg.BatchFlushThreshold > 0 {
 		processorOpts = append(processorOpts, processor.WithBatchFlushThreshold(cfg.BatchFlushThreshold))
 	}
@@ -56,8 +61,6 @@ func main() {
 		logger.Error("failed to process spans", "error", err)
 		os.Exit(1)
 	}
-
-	apiBackend := api.New(database, api.WithAPILogger(logger))
 
 	catalogStart := time.Now()
 	catalog, err := apiBackend.GetCatalog(ctx)

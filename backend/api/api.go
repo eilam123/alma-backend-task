@@ -16,6 +16,7 @@ import (
 type APIBackend struct {
 	db     db.Database
 	logger *slog.Logger
+	cache  responseCache
 }
 
 // APIOption configures an APIBackend.
@@ -34,6 +35,14 @@ func New(database db.Database, opts ...APIOption) *APIBackend {
 		opt(a)
 	}
 	return a
+}
+
+// InvalidateCache clears all cached API responses, forcing the next
+// call to GetCatalog/GetConnections to re-read from the DB.
+func (a *APIBackend) InvalidateCache() {
+	a.cache.invalidate()
+	metrics.CacheInvalidationsTotal.Inc()
+	a.logger.Debug("API cache invalidated")
 }
 
 type CatalogComponentResponse struct {
@@ -83,7 +92,17 @@ func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
 	}
 }
 
+// GetCatalog returns the full catalog of app items and their components.
+// The returned value may be served from cache — callers must treat it as
+// read-only and must not modify the response or any of its nested slices/maps.
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
+	cached, gen := a.cache.getCatalog()
+	if cached != nil {
+		metrics.CacheHitsTotal.WithLabelValues("catalog").Inc()
+		return cached, nil
+	}
+	metrics.CacheMissesTotal.WithLabelValues("catalog").Inc()
+
 	start := time.Now()
 	defer func() {
 		d := time.Since(start)
@@ -139,10 +158,21 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 		}
 	}
 
+	a.cache.setCatalog(gen, result)
 	return result, nil
 }
 
+// GetConnections returns all connections between app items.
+// The returned value may be served from cache — callers must treat it as
+// read-only and must not modify the response slice or its elements.
 func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, error) {
+	cached, gen, ok := a.cache.getConnections()
+	if ok {
+		metrics.CacheHitsTotal.WithLabelValues("connections").Inc()
+		return cached, nil
+	}
+	metrics.CacheMissesTotal.WithLabelValues("connections").Inc()
+
 	start := time.Now()
 	defer func() {
 		d := time.Since(start)
@@ -197,5 +227,6 @@ func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, 
 		})
 	}
 
+	a.cache.setConnections(gen, connections)
 	return connections, nil
 }

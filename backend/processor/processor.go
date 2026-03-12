@@ -18,7 +18,8 @@ type SpanProcessor struct {
 	handlers            map[string]SpanTypeHandler
 	piiDetectors        []PIIDetector
 	logger              *slog.Logger
-	batchFlushThreshold int // 0 means accumulate all before flushing
+	batchFlushThreshold int              // 0 means accumulate all before flushing
+	cacheInvalidator    CacheInvalidator // called after processing; nil = no-op
 }
 
 func New(database db.Database, opts ...Option) *SpanProcessor {
@@ -110,6 +111,10 @@ func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) 
 	} else {
 		// Without threshold, accumulator has the full picture
 		p.recordGaugesFromAccumulator(acc)
+	}
+
+	if p.cacheInvalidator != nil && len(rawSpans) > 0 {
+		p.cacheInvalidator.InvalidateCache()
 	}
 	return nil
 }
