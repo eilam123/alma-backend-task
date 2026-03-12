@@ -113,7 +113,7 @@ func (p *SpanProcessor) Process(ctx context.Context, rawSpans []models.RawSpan) 
 		p.recordGaugesFromAccumulator(acc)
 	}
 
-	if p.cacheInvalidator != nil {
+	if p.cacheInvalidator != nil && len(rawSpans) > 0 {
 		p.cacheInvalidator.InvalidateCache()
 	}
 	return nil

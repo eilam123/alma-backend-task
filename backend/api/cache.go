@@ -7,6 +7,11 @@ import "sync"
 // A generation counter prevents stale writes: if an invalidation occurs
 // between a cache miss and the subsequent set call, the set is rejected.
 //
+// Note: on a cold cache with concurrent requests, each will independently
+// query the DB (thundering herd). This is a deliberate simplification —
+// all results are correct, only redundant work is performed. A singleflight
+// pattern could coalesce concurrent misses if this becomes a bottleneck.
+//
 // Callers must not modify the returned cached values — they are shared
 // across all concurrent readers.
 type responseCache struct {

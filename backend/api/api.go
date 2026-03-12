@@ -92,20 +92,23 @@ func buildConnectionComponent(rec db.Record) ConnectionComponentResponse {
 	}
 }
 
+// GetCatalog returns the full catalog of app items and their components.
+// The returned value may be served from cache — callers must treat it as
+// read-only and must not modify the response or any of its nested slices/maps.
 func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
-	start := time.Now()
-	defer func() {
-		d := time.Since(start)
-		metrics.APIQueryDuration.WithLabelValues("catalog").Observe(d.Seconds())
-		a.logger.Info("GetCatalog completed", "duration", d)
-	}()
-
 	cached, gen := a.cache.getCatalog()
 	if cached != nil {
 		metrics.CacheHitsTotal.WithLabelValues("catalog").Inc()
 		return cached, nil
 	}
 	metrics.CacheMissesTotal.WithLabelValues("catalog").Inc()
+
+	start := time.Now()
+	defer func() {
+		d := time.Since(start)
+		metrics.APIQueryDuration.WithLabelValues("catalog").Observe(d.Seconds())
+		a.logger.Info("GetCatalog completed", "duration", d)
+	}()
 
 	// Fetch all 3 tables in parallel, using AllGroupedBy for pre-indexed results
 	var (
@@ -159,20 +162,23 @@ func (a *APIBackend) GetCatalog(ctx context.Context) (*CatalogResponse, error) {
 	return result, nil
 }
 
+// GetConnections returns all connections between app items.
+// The returned value may be served from cache — callers must treat it as
+// read-only and must not modify the response slice or its elements.
 func (a *APIBackend) GetConnections(ctx context.Context) ([]ConnectionResponse, error) {
-	start := time.Now()
-	defer func() {
-		d := time.Since(start)
-		metrics.APIQueryDuration.WithLabelValues("connections").Observe(d.Seconds())
-		a.logger.Info("GetConnections completed", "duration", d)
-	}()
-
 	cached, gen, ok := a.cache.getConnections()
 	if ok {
 		metrics.CacheHitsTotal.WithLabelValues("connections").Inc()
 		return cached, nil
 	}
 	metrics.CacheMissesTotal.WithLabelValues("connections").Inc()
+
+	start := time.Now()
+	defer func() {
+		d := time.Since(start)
+		metrics.APIQueryDuration.WithLabelValues("connections").Observe(d.Seconds())
+		a.logger.Info("GetConnections completed", "duration", d)
+	}()
 
 	// Fetch connections and components in parallel
 	var (
