@@ -99,6 +99,7 @@ docker run telemetry-analysis
 | `HTTP_PORT` | `8080` | REST API server port |
 | `METRICS_PORT` | `9090` | Prometheus metrics server port |
 | `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `BATCH_FLUSH_THRESHOLD` | `0` | Flush accumulator when any table exceeds this count (0 = flush once at end) |
 
 Example with debug logging on custom ports:
 
@@ -119,15 +120,15 @@ ebpf_spans.json
   EBPFAgent.GetSpans()          -- parse JSON into []RawSpan
       |
       v
-  SpanProcessor.Process()       -- classify app items, extract components, detect PIIs, record connections
-      |
+  SpanProcessor.Process()       -- accumulate writes in memory, flush in batch (2 parallel waves)
+      |                            invalidates API cache on completion
       v
   In-Memory DB                  -- 4 tables: app_items, components, component_piis, connections
       |
       v
-  APIBackend.GetCatalog()       -- assemble full catalog with components and PIIs
-  APIBackend.GetConnections()   -- assemble connection map with components
-      |
+  APIBackend.GetCatalog()       -- assemble catalog (parallel DB reads + AllGroupedBy)
+  APIBackend.GetConnections()   -- assemble connections (parallel DB reads)
+      |                            results cached until next invalidation
       v
   JSON output to stdout         -- CLI output on startup
   REST API (:8080)              -- GET /catalog, GET /connections
@@ -160,7 +161,9 @@ ebpf_spans.json
 │   │   └── pii.go                   # PII detector definitions and regex patterns
 │   └── api/
 │       ├── api.go                   # GetCatalog and GetConnections implementation
-│       └── api_test.go              # 6 API integration tests
+│       ├── api_test.go              # API integration tests
+│       ├── cache.go                 # Signal-based response cache with generation counter
+│       └── cache_test.go            # Cache unit tests (hit, miss, invalidation, concurrency)
 ├── metrics/
 │   └── metrics.go                   # Prometheus metric definitions and registration
 ├── server/
@@ -266,6 +269,9 @@ Available at `GET /metrics` on the metrics port (default `:9090`):
 | `app_items_total` | Gauge | `type` | App items by type |
 | `components_total` | Gauge | `type` | Components by type |
 | `connections_total` | Gauge | -- | Total connections |
+| `api_cache_hits_total` | Counter | `endpoint` | API cache hits by endpoint |
+| `api_cache_misses_total` | Counter | `endpoint` | API cache misses by endpoint |
+| `api_cache_invalidations_total` | Counter | -- | API cache invalidations |
 
 ---
 
@@ -309,9 +315,13 @@ p := processor.New(database,
 )
 ```
 
-### Efficient Querying
+### Batch Write Accumulator
 
-Both `GetCatalog` and `GetConnections` use bulk-fetch-then-index (3 `All()` calls + in-memory maps) instead of N+1 per-row queries.
+The processor accumulates all DB writes in memory (keyed by primary key) and flushes them in 4 batch operations across 2 parallel waves, reducing ~400-800 individual DB calls to just 4. A configurable `BATCH_FLUSH_THRESHOLD` bounds memory usage for large span sets.
+
+### Parallel API Reads with Caching
+
+`GetCatalog` and `GetConnections` fetch tables in parallel using goroutines and use `AllGroupedBy()` for index-accelerated grouping. Responses are cached with a generation-counter pattern -- the processor signals cache invalidation after writing new data via the `CacheInvalidator` interface.
 
 ---
 
